@@ -37,3 +37,16 @@ migrate:  ## Run database migrations
 
 migrate-create:  ## Create new migration
 	alembic revision --autogenerate -m "$(msg)"
+
+security:  ## Run security checks
+	bandit -r app/ -c pyproject.toml
+	safety check --file requirements.txt
+
+pre-commit:  ## Run pre-commit hooks
+	pre-commit run --all-files
+
+pre-commit-install:  ## Install pre-commit hooks
+	pre-commit install
+
+pre-commit-update:  ## Update pre-commit hooks
+	pre-commit autoupdate
