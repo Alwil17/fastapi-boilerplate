@@ -7,6 +7,7 @@
 ![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
 ![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)
 ![Codecov](https://codecov.io/gh/Alwil17/fastapi-boilerplate/branch/master/graph/badge.svg)
+![Template checkbox](https://docs.github.com/assets/cb-24935/images/help/repository/template-repository-checkbox.png)
 
 > A production-ready FastAPI boilerplate with clean architecture, JWT authentication, and PostgreSQL/SQLite support.
 
