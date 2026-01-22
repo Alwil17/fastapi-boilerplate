@@ -1,5 +1,7 @@
 # 🚀 FastAPI Boilerplate - Clean Architecture
 
+[![Use this template](https://img.shields.io/badge/Use%20this-Template-2ea44f?style=for-the-badge&logo=github)](https://github.com/Alwil17/fastapi-boilerplate/generate)
+
 ![CI](https://github.com/Alwil17/fastapi-boilerplate/workflows/CI/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-green.svg)
