@@ -1,11 +1,14 @@
 # 🚀 FastAPI Boilerplate - Clean Architecture
 
-![CI](https://github.com/Alwil17/fastapi-boilerplate/workflows/CI/badge.svg)
-![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-green.svg)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
-![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)
+<p align="center">
+  <img src="https://github.com/Alwil17/fastapi-boilerplate/workflows/CI/badge.svg" alt="CI">
+  <img src="https://codecov.io/gh/Alwil17/fastapi-boilerplate/branch/master/graph/badge.svg" alt="Codecov">
+  <img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python">
+  <img src="https://img.shields.io/badge/FastAPI-0.109+-green.svg" alt="FastAPI">
+  <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License">
+  <img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Black">
+  <img src="https://img.shields.io/github/stars/Alwil17/fastapi-boilerplate? style=social" alt="Stars">
+</p>
 
 > A production-ready FastAPI boilerplate with clean architecture, JWT authentication, and PostgreSQL/SQLite support.
 
