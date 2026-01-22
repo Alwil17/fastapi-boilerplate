@@ -43,4 +43,6 @@ def get_db():
     finally:
         db.close()
 
-init_db()
+# Only initialize DB if not in test mode
+if not is_test:
+    init_db()
