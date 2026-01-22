@@ -14,7 +14,7 @@ class UserService:
     def create_user(self, user_data: UserCreateDTO) -> User:
         existing_user = self.repository.get_by_email(user_data.email)
         if existing_user:
-            raise ValueError("An user with this email already exists.")
+            raise ValueError("A user with this email already exists.")
         return self.repository.create(user_data)
 
     def get_user_by_email(self, email: str) -> User:

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from app.core.security import hash_password
@@ -45,7 +45,7 @@ class UserRepository:
         for key, value in update_data.items():
             setattr(user, key, value)
 
-        user.updated_at = datetime.now()
+        user.updated_at = datetime.now(timezone.utc)
         self.db.commit()
         self.db.refresh(user)
         return user

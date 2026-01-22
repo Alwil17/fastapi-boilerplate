@@ -23,9 +23,11 @@ app = FastAPI(
 app.include_router(health_endpoints.router)
 app.include_router(auth_endpoints.router)
 
+# Configure CORS - in production, replace "*" with specific origins
+allowed_origins = ["*"] if settings.APP_DEBUG else ["http://localhost:3000"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

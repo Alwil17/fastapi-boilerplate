@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 from app.schemas.user_dto import UserCreateDTO, UserResponse
 from app.schemas.auth_dto import TokenResponse, RefreshTokenRequest
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 def create_refresh_token(user_id: int, db: Session):
     """Create a new refresh token for a user."""
     token = secrets.token_hex(32)
-    expires_at = datetime.now() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     refresh_token_repo = RefreshTokenRepository(db)
     refresh_token_repo.create(user_id, token, expires_at)
     return token
@@ -77,7 +77,7 @@ async def refresh_access_token(
             detail="Invalid refresh token"
         )
 
-    if stored_token.expires_at < datetime.now():
+    if stored_token.expires_at < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token expired"
