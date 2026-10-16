@@ -21,6 +21,8 @@ workers = int(os.getenv("WEB_CONCURRENCY", "2"))
 timeout = int(os.getenv("GUNICORN_TIMEOUT", "30"))
 graceful_timeout = int(os.getenv("GUNICORN_GRACEFUL_TIMEOUT", "30"))
 keepalive = 5
+# The control socket lives in $HOME, which the non-root container user does not have.
+control_socket_disable = True
 # Recycle workers after N requests (0 = never); jitter avoids restarting them all at once.
 max_requests = int(os.getenv("GUNICORN_MAX_REQUESTS", "0"))
 max_requests_jitter = max_requests // 10
