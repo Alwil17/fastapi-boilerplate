@@ -1,3 +1,5 @@
+from typing import Any
+
 from app.core.config import settings
 from app.core.logging_config import request_id_var
 
@@ -6,7 +8,7 @@ _enabled = False
 
 # Nothing from the request is attached to events: bodies, cookies and headers carry
 # passwords and tokens, and local variables of auth frames hold plaintext credentials.
-DATA_COLLECTION = {
+DATA_COLLECTION: Any = {
     "user_info": False,
     "cookies": {"mode": "off"},
     "http_headers": {"request": {"mode": "off"}},

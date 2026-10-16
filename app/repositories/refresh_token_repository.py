@@ -1,7 +1,10 @@
 from datetime import datetime
+from typing import cast
 
 from sqlalchemy import update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.base import Executable
 
 from app.db.models.refresh_token import RefreshToken
 
@@ -38,6 +41,10 @@ class RefreshTokenRepository:
             self.db.refresh(refresh_token)
         return refresh_token
 
+    def _execute(self, statement: Executable) -> CursorResult:
+        # UPDATE/DELETE return a CursorResult (rowcount); Session.execute is typed wider.
+        return cast(CursorResult, self.db.execute(statement))
+
     def get_by_hash(self, token_hash: str) -> RefreshToken | None:
         return (
             self.db.query(RefreshToken)
@@ -52,7 +59,7 @@ class RefreshTokenRepository:
         same token cannot both succeed. Returns None when the token is unknown,
         already revoked or expired. Does not commit.
         """
-        result = self.db.execute(
+        result = self._execute(
             update(RefreshToken)
             .where(
                 RefreshToken.token_hash == token_hash,
@@ -74,7 +81,7 @@ class RefreshTokenRepository:
         return self._revoke(RefreshToken.user_id == user_id, commit)
 
     def _revoke(self, condition, commit: bool) -> int:
-        result = self.db.execute(
+        result = self._execute(
             update(RefreshToken)
             .where(condition, RefreshToken.revoked.is_(False))
             .values(revoked=True)

@@ -1,3 +1,5 @@
+from typing import Any
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -11,7 +13,7 @@ def _create_engine():
     url = settings.build_database_url()
 
     if url.get_backend_name() == "sqlite":
-        kwargs = {"connect_args": {"check_same_thread": False}}
+        kwargs: dict[str, Any] = {"connect_args": {"check_same_thread": False}}
         if url.database in (None, "", ":memory:"):
             # One shared connection, otherwise every connection sees its own empty DB.
             kwargs["poolclass"] = StaticPool

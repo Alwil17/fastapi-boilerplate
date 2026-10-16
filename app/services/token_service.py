@@ -1,6 +1,7 @@
 import logging
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import NoReturn
 
 from sqlalchemy.orm import Session
 
@@ -77,7 +78,7 @@ class TokenService:
     def revoke_all(self, user_id: int) -> int:
         return self.tokens.revoke_all_for_user(user_id)
 
-    def _reject(self, token_hash: str):
+    def _reject(self, token_hash: str) -> NoReturn:
         existing = self.tokens.get_by_hash(token_hash)
         if existing is None:
             raise InvalidRefreshToken("Invalid refresh token")

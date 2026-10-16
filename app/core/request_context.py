@@ -98,7 +98,7 @@ class RequestContextMiddleware:
 def _loggable_path(scope: Scope) -> str:
     # raw_path keeps %0a-style escapes undecoded, so a crafted URL cannot inject lines.
     raw = scope.get("raw_path") or scope["path"].encode("utf-8")
-    return raw.split(b"?", 1)[0].decode("latin-1")[:MAX_LOGGED_PATH]
+    return str(raw.split(b"?", 1)[0].decode("latin-1"))[:MAX_LOGGED_PATH]
 
 
 def _request_fields(scope: Scope) -> dict:

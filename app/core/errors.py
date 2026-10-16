@@ -6,6 +6,8 @@ Validation errors (422) add `error.details`: a list of {"loc", "msg", "type"}.
 Headers set on the exception (WWW-Authenticate, Retry-After) are preserved.
 """
 
+from collections.abc import Mapping
+
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -34,7 +36,7 @@ def error_response(
     *,
     code: str | None = None,
     details: list | None = None,
-    headers: dict[str, str] | None = None,
+    headers: Mapping[str, str] | None = None,
 ) -> JSONResponse:
     error: dict = {
         "code": code or ERROR_CODES.get(status_code, f"http_{status_code}"),
@@ -67,5 +69,10 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError):
 
 
 def register_exception_handlers(app: FastAPI) -> None:
-    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
-    app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    # Starlette types handlers as taking `Exception`; ours take the narrower type.
+    app.add_exception_handler(
+        StarletteHTTPException, http_exception_handler  # type: ignore[arg-type]
+    )
+    app.add_exception_handler(
+        RequestValidationError, validation_exception_handler  # type: ignore[arg-type]
+    )

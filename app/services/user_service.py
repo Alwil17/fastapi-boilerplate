@@ -18,7 +18,7 @@ class UserService:
             raise ValueError("A user with this email already exists.")
         return self.repository.create(user_data)
 
-    def get_user_by_email(self, email: str) -> User:
+    def get_user_by_email(self, email: str) -> User | None:
         return self.repository.get_by_email(email)
 
     def authenticate_user(self, email: str, password: str) -> User | None:
