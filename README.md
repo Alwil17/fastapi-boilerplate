@@ -134,6 +134,7 @@ pytest tests/test_auth.py -v
 - `GET /health/ready` - Readiness (checks the database)
 - `GET /health` - API health status
 - `GET /` - Welcome message
+- `GET /metrics` - Prometheus metrics (only when `PROMETHEUS_ENABLED=true`)
 
 ## 🔧 Configuration
 
@@ -170,6 +171,21 @@ RATE_LIMIT_LOGIN=10/minute
 - Purge expired refresh tokens on a schedule: `python -m app.jobs.purge_refresh_tokens`.
 - Behind a reverse proxy, set `FORWARDED_ALLOW_IPS` to the proxy address so rate limiting sees real client IPs.
 - Known limit: `POST /auth/register` reveals whether an email is taken; fixing that needs an email verification flow.
+
+## 🔭 Observability
+
+- **Logs**: one JSON object per line on stdout (`LOG_FORMAT=json`, default; `console` for local reading), level from `LOG_LEVEL`. Uvicorn logs go through the same pipeline; its own access log is replaced by the app's, so run it without relying on `--access-log`. Every line carries the `request_id`. Query strings are never logged.
+- **Request id**: each response has an `X-Request-ID` header. A well-formed inbound one (`[A-Za-z0-9._-]`, 1-64 chars) is reused so ids can be traced across services; anything else is replaced.
+- **Errors**: every non-2xx response has the same shape. Validation errors add `details` (field `loc`, `msg`, `type`; submitted values are never echoed). Unhandled exceptions return a generic 500: the cause is only in the logs and Sentry.
+
+  ```json
+  {"error": {"code": "unauthorized", "message": "Not authenticated", "request_id": "9f1c..."}}
+  ```
+
+  Codes: `bad_request`, `unauthorized`, `forbidden`, `not_found`, `method_not_allowed`, `conflict`, `validation_error`, `rate_limited`, `internal_error`, `service_unavailable`, else `http_<status>`.
+- **Metrics**: `PROMETHEUS_ENABLED=true` serves `GET /metrics` (`http_requests_total`, `http_request_duration_seconds`, `http_requests_in_progress`), labelled by route template so cardinality stays bounded. Do not expose it publicly: restrict it at the proxy/network level and/or set `METRICS_TOKEN` (clients then send `Authorization: Bearer <token>`). Counters are per process: with several workers, scrape each one or use prometheus_client's multiprocess mode.
+- **Sentry**: set `SENTRY_DSN` to report unhandled exceptions, tagged with the request id. Request bodies, headers, cookies, query strings and local variables are not collected (auth frames hold plaintext passwords).
+- **Version**: single source in `app/__version__`, used by the API, OpenAPI, Sentry release and `pyproject.toml`.
 
 ## 🏗️ Architecture Principles
 
