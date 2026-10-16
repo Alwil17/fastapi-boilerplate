@@ -1,12 +1,20 @@
-from fastapi import APIRouter, Depends
+import logging
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Depends, Response, status
+from sqlalchemy import text
 from sqlalchemy.orm import Session
-from datetime import datetime
+
+from app.core.config import settings
 from app.db.base import get_db
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Health Check"])
 
+
 @router.get("/health")
-async def health_check(db: Session = Depends(get_db)):
+def health_check(db: Session = Depends(get_db)):
     """
     Simple health check endpoint to verify:
     - API is responding
@@ -14,23 +22,43 @@ async def health_check(db: Session = Depends(get_db)):
     - Current timestamp
     """
     try:
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db_status = "healthy"
-    except Exception as e:
-        db_status = f"unhealthy: {str(e)}"
+    except Exception:
+        logger.exception("Health check: database unreachable")
+        db_status = "unhealthy"
 
     return {
         "status": "healthy" if db_status == "healthy" else "degraded",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "database": db_status,
-        "version": "1.0.0",
+        "version": settings.APP_VERSION,
     }
 
+
+@router.get("/health/live")
+def liveness():
+    """Liveness probe: process is up. Does not touch dependencies."""
+    return {"status": "alive"}
+
+
+@router.get("/health/ready")
+def readiness(response: Response, db: Session = Depends(get_db)):
+    """Readiness probe: 503 when the database is unreachable."""
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception:
+        logger.exception("Readiness check: database unreachable")
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {"status": "unavailable"}
+    return {"status": "ready"}
+
+
 @router.get("/")
-async def root():
+def root():
     """API root endpoint providing basic information."""
     return {
         "message": "Welcome to FastAPI Boilerplate",
-        "version": "1.0.0",
+        "version": settings.APP_VERSION,
         "docs": "/docs",
     }
