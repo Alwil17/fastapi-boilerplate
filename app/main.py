@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,8 +8,17 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 import app.api.routes.auth_routes as auth_endpoints
 import app.api.routes.health_routes as health_endpoints
 from app.core.config import settings
+from app.db.base import engine
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    yield
+    engine.dispose()  # release pooled DB connections on graceful shutdown
+
 
 app = FastAPI(
+    lifespan=lifespan,
     title=settings.APP_NAME,
     description=settings.APP_DESCRIPTION,
     version=settings.APP_VERSION,
