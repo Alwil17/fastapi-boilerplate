@@ -58,3 +58,8 @@ def test_configure_logging_routes_uvicorn_through_root():
     assert logging.getLogger("uvicorn.error").propagate is True
     assert logging.getLogger("uvicorn.error").handlers == []
     assert logging.getLogger("uvicorn.access").propagate is False
+
+
+def test_json_formatter_drops_uvicorn_color_message():
+    out = json.loads(JsonFormatter().format(_record("hi", color_message="\x1b[1mhi")))
+    assert "color_message" not in out

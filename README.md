@@ -174,7 +174,7 @@ RATE_LIMIT_LOGIN=10/minute
 
 ## 🔭 Observability
 
-- **Logs**: one JSON object per line on stdout (`LOG_FORMAT=json`, default; `console` for local reading), level from `LOG_LEVEL`. Uvicorn logs go through the same pipeline; its own access log is replaced by the app's, so run it without relying on `--access-log`. Every line carries the `request_id`. Query strings are never logged.
+- **Logs**: one JSON object per line on stdout (`LOG_FORMAT=json`, default; `console` for local reading), level from `LOG_LEVEL`. Uvicorn logs go through the same pipeline; its own access log is silenced in favour of the app's. Every line carries the `request_id`. Query strings are never logged.
 - **Request id**: each response has an `X-Request-ID` header. A well-formed inbound one (`[A-Za-z0-9._-]`, 1-64 chars) is reused so ids can be traced across services; anything else is replaced.
 - **Errors**: every non-2xx response has the same shape. Validation errors add `details` (field `loc`, `msg`, `type`; submitted values are never echoed). Unhandled exceptions return a generic 500: the cause is only in the logs and Sentry.
 

@@ -10,7 +10,13 @@ from app.core.config import settings
 request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
 
 # Attributes every LogRecord has: anything else came from `extra=` and is logged too.
-_RESERVED = set(vars(logging.makeLogRecord({}))) | {"message", "asctime", "taskName"}
+# color_message: uvicorn's ANSI-coloured duplicate of the message.
+_RESERVED = set(vars(logging.makeLogRecord({}))) | {
+    "message",
+    "asctime",
+    "taskName",
+    "color_message",
+}
 _HANDLER_MARK = "_app_log_handler"
 
 
