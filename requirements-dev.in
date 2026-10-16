@@ -1,0 +1,21 @@
+# Dev/CI tooling, resolved on top of the runtime pins. Regenerate with: make lock
+-c requirements.txt
+
+# Testing
+pytest>=8.0.0
+pytest-cov>=4.1.0
+pytest-env>=1.1.0
+httpx>=0.26.0
+
+# Code quality
+ruff>=0.1.0
+black>=24.0.0
+isort>=5.13.0
+mypy>=1.8.0
+
+# Security
+bandit[toml]>=1.7.5
+pip-audit
+
+# Pre-commit
+pre-commit>=3.6.0

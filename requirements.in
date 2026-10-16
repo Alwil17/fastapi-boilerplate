@@ -1,0 +1,17 @@
+# Direct runtime dependencies. requirements.txt is generated from this file:
+#   make lock
+fastapi
+uvicorn[standard]
+gunicorn
+uvicorn-worker
+SQLAlchemy
+psycopg2-binary
+alembic
+pydantic[email]
+PyJWT>=2.8
+bcrypt
+python-multipart
+pydantic-settings>=2.7
+limits>=3.13
+prometheus-client>=0.20
+sentry-sdk>=2.72

@@ -1,11 +1,15 @@
-.PHONY: help install dev test lint format clean docker-up docker-down migrate
+.PHONY: help install lock dev test lint format clean docker-up docker-down migrate
 
 help:  ## Show this help message
 	@echo "Available commands:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-install:   ## Install dependencies
-	pip install -r requirements.txt
+install:   ## Install pinned dependencies (runtime + dev tools)
+	pip install --require-hashes -r requirements-dev.txt
+
+lock:  ## Re-resolve requirements*.txt from requirements*.in (needs uv)
+	uv pip compile requirements.in -o requirements.txt --universal --python-version 3.13 --generate-hashes --no-header
+	uv pip compile requirements-dev.in -o requirements-dev.txt --universal --python-version 3.13 --generate-hashes --no-header
 
 dev:  ## Run development server
 	uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -40,7 +44,7 @@ migrate-create:  ## Create new migration
 
 security:  ## Run security checks
 	bandit -r app/ -c pyproject.toml
-	safety check --file requirements.txt
+	pip-audit -r requirements.txt
 
 pre-commit:  ## Run pre-commit hooks
 	pre-commit run --all-files
