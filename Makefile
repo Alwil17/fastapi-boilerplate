@@ -1,4 +1,4 @@
-.PHONY: help install lock dev test lint format clean docker-build docker-up docker-prod docker-down migrate
+.PHONY: help install lock dev test lint format clean docker-build docker-up docker-prod docker-down migrate loadtest
 
 help:  ## Show this help message
 	@echo "Available commands:"
@@ -41,6 +41,15 @@ docker-prod:  ## Start the production-shaped stack (no override)
 
 docker-down:  ## Stop Docker containers (keeps the database volume)
 	docker compose down
+
+BASE_URL ?= http://host.docker.internal:8000
+VUS ?= 20
+DURATION ?= 30s
+
+loadtest:  ## Load test a running API with k6 in Docker (BASE_URL, VUS, DURATION)
+	docker run --rm -i --add-host=host.docker.internal:host-gateway \
+		-e BASE_URL=$(BASE_URL) -e VUS=$(VUS) -e DURATION=$(DURATION) \
+		grafana/k6 run - < loadtest/api.js
 
 migrate:  ## Run database migrations
 	alembic upgrade head
