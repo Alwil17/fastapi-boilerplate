@@ -11,6 +11,7 @@ import app.api.routes.user_routes as user_endpoints
 from app.core.config import settings
 from app.core.errors import register_exception_handlers
 from app.core.logging_config import configure_logging
+from app.core.metrics import install_metrics
 from app.core.request_context import RequestContextMiddleware
 from app.core.security_headers import SecurityHeadersMiddleware
 from app.db.base import engine
@@ -50,6 +51,9 @@ app.include_router(user_endpoints.router)
 
 # Added first = innermost: CORS and security headers wrap its error responses.
 app.add_middleware(RequestContextMiddleware)
+
+if settings.PROMETHEUS_ENABLED:
+    install_metrics(app)
 
 app.add_middleware(
     CORSMiddleware,

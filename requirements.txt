@@ -9,3 +9,4 @@ bcrypt
 python-multipart
 pydantic-settings>=2.7
 limits>=3.13
+prometheus-client>=0.20

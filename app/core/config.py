@@ -86,6 +86,8 @@ class Settings(BaseSettings):
 
     # Prometheus
     PROMETHEUS_ENABLED: bool = False
+    # If set, GET /metrics requires 'Authorization: Bearer <token>'.
+    METRICS_TOKEN: str | None = None
 
     @field_validator("LOG_LEVEL", "LOG_FORMAT", mode="before")
     @classmethod
