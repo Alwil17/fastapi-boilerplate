@@ -57,8 +57,10 @@ def readiness(response: Response, db: Session = Depends(get_db)):
 @router.get("/")
 def root():
     """API root endpoint providing basic information."""
-    return {
+    info = {
         "message": "Welcome to FastAPI Boilerplate",
         "version": settings.APP_VERSION,
-        "docs": "/docs",
     }
+    if settings.docs_enabled:
+        info["docs"] = "/docs"
+    return info
