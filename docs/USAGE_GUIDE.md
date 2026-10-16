@@ -36,8 +36,7 @@ python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
 # 3. Install dependencies
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
+pip install --require-hashes -r requirements-dev.txt   # runtime + dev tools, hash-verified
 
 # 4. Setup pre-commit hooks
 pre-commit install
@@ -57,16 +56,19 @@ uvicorn app.main:app --reload
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Alwil17/fastapi-boilerplate. git
+git clone https://github.com/Alwil17/fastapi-boilerplate.git
 cd fastapi-boilerplate
 
-# 2. Start all services
-docker-compose up -d
+# 2. Configure the environment (DB_PASSWORD is required)
+cp .env.example .env
 
-# 3. View logs
-docker-compose logs -f api
+# 3. Start all services (merges docker-compose.override.yml: reload, DB on 127.0.0.1)
+docker compose up -d --build
 
-# 4. Access the API
+# 4. View logs
+docker compose logs -f api
+
+# 5. Access the API
 # http://localhost:8000
 ```
 
@@ -183,10 +185,12 @@ make dev                  # Run development server with auto-reload
 # Code Quality
 make lint                 # Run all linting tools (ruff, mypy)
 make format               # Format code with black and isort
-make security             # Run security checks (bandit, safety)
+make security             # Run security checks (bandit, pip-audit)
 
 # Testing
-make test                 # Run tests with coverage
+make test                 # Run tests with coverage (fails under 95%)
+make loadtest             # k6 load test against a running API (see loadtest/api.js)
+make lock                 # Re-resolve the hashed requirements*.txt (needs uv)
 
 # Pre-commit
 make pre-commit-install   # Install pre-commit hooks
@@ -313,16 +317,17 @@ bandit -r app/ -f json -o bandit-report.json
 - Hardcoded passwords
 - Shell injection risks
 
-#### **Safety** - Dependency Scanner
+#### **pip-audit** - Dependency Scanner
 
-Checks for known security vulnerabilities in dependencies.
+Checks the pinned dependencies against the PyPI advisory database. CI runs it on every
+push and weekly.
 
 ```bash
-# Check dependencies
-safety check --file requirements.txt
+# Check the runtime dependencies
+pip-audit -r requirements.txt
 
-# Generate JSON report
-safety check --json --file requirements.txt
+# JSON report
+pip-audit -r requirements.txt --format json
 ```
 
 ### Pre-commit Hooks
@@ -438,7 +443,7 @@ pytest -vv
 pytest tests/test_auth.py
 
 # Run specific test function
-pytest tests/test_auth. py::test_register_user
+pytest tests/test_auth.py::test_register_user
 
 # Stop on first failure
 pytest -x
@@ -741,37 +746,44 @@ alembic show <revision>
 ```python
 # app/db/models/example.py
 
-from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
+from datetime import datetime
+from typing import TYPE_CHECKING
+
+from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.models.base import Base
+
+if TYPE_CHECKING:
+    from app.db.models.user import User
+
 
 class Example(Base):
     __tablename__ = "examples"
-    
-    # Primary key
-    id = Column(Integer, primary_key=True, index=True)
-    
-    # Fields
-    name = Column(String(100), nullable=False)
-    description = Column(String(500))
-    
-    # Foreign key
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    
-    # Timestamps
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
-    updated_at = Column(
-        DateTime,
-        default=datetime.now(timezone.utc),
-        onupdate=datetime.now(timezone.utc),
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(500))
+
+    # ondelete=CASCADE + an index: user deletion cleans up, joins stay fast
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    
-    # Relationships
-    user = relationship("User", back_populates="examples")
-    
-    def __repr__(self):
-        return f"<Example(id={self.id}, name='{self.name}')>"
+
+    # server_default is evaluated by the database per row; default=datetime.now(...)
+    # would be computed once, at import time
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    user: Mapped["User"] = relationship("User")
 ```
 
 #### Register Model
@@ -923,7 +935,11 @@ curl -X POST "http://localhost:8000/auth/refresh" \
 #### Health Check
 
 ```bash
-# Check API health
+# Liveness (process is up, no dependency touched) and readiness (503 if the DB is down)
+curl -X GET "http://localhost:8000/health/live"
+curl -X GET "http://localhost:8000/health/ready"
+
+# Combined status
 curl -X GET "http://localhost:8000/health"
 
 # Response:
@@ -980,7 +996,7 @@ DB_NAME=mydb_dev
 DB_USER=dev_user
 DB_PASSWORD=dev_password
 
-ACCESS_TOKEN_EXPIRE_MINUTES=1440
+ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=7
 ```
 
@@ -993,13 +1009,13 @@ APP_DEBUG=False
 APP_SECRET_KEY=your-super-secure-secret-key-min-32-chars
 
 DB_ENGINE=postgresql
-DB_HOST=your-production-db-host. com
+DB_HOST=your-production-db-host.example.com
 DB_PORT=5432
 DB_NAME=prod_database
 DB_USER=prod_user
 DB_PASSWORD=very-secure-production-password
 
-ACCESS_TOKEN_EXPIRE_MINUTES=60
+ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=7
 ```
 
@@ -1009,122 +1025,72 @@ REFRESH_TOKEN_EXPIRE_DAYS=7
 - ✅ Use strong database password
 - ✅ Never commit `.env` files
 - ✅ Restrict database access by IP
-- ✅ Use SSL/TLS for database connections
+- ✅ Use SSL/TLS for database connections (`DB_SSLMODE=require` or `verify-full`)
+- ✅ Restrict `ALLOWED_HOSTS` and `CORS_ORIGINS` to your real domains
+- ✅ Set `FORWARDED_ALLOW_IPS` to your reverse proxy only
+
+With `APP_ENV=production` (or `prod`, `staging`) the app refuses to start on a default or
+short `APP_SECRET_KEY`, `APP_DEBUG=True`, `*` in `CORS_ORIGINS` or the default DB password.
+See [SECURITY.md](../SECURITY.md) and the [runbook](RUNBOOK.md).
 
 ### Docker Production
 
-#### Optimized Dockerfile
+#### Image
 
-```dockerfile
-# Multi-stage build for smaller image
-FROM python:3.11-slim as builder
-
-WORKDIR /app
-
-# Install dependencies
-COPY requirements.txt . 
-RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
-
-# Final stage
-FROM python:3.11-slim
-
-WORKDIR /app
-
-# Copy wheels from builder
-COPY --from=builder /app/wheels /wheels
-COPY --from=builder /app/requirements.txt .
-
-# Install dependencies
-RUN pip install --no-cache /wheels/*
-
-# Copy application
-COPY ./app ./app
-COPY ./alembic ./alembic
-COPY ./alembic.ini . 
-
-# Create non-root user
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-USER appuser
-
-# Expose port
-EXPOSE 8000
-
-# Run application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
+The repository's `Dockerfile` is already production-shaped: multi-stage on
+`python:3.13-slim`, hash-verified dependencies, non-root user (uid 10001), read-only code,
+gunicorn with uvicorn workers, `HEALTHCHECK` on `/health/live`, and an entrypoint that
+runs `alembic upgrade head` before starting. See the README's Docker section for every
+setting.
 
 #### Build and Run
 
 ```bash
 # Build image
-docker build -t fastapi-boilerplate: 1.0.0 .
+docker build -t fastapi-boilerplate:1.0.0 .
 
-# Run container
+# Production-shaped stack (skips docker-compose.override.yml)
+docker compose -f docker-compose.yml up -d --build
+
+# Or run the image against an existing database
 docker run -d \
   --name fastapi-app \
   -p 8000:8000 \
-  --env-file .env. production \
+  --env-file .env.production \
   fastapi-boilerplate:1.0.0
 
-# View logs
+# View logs (JSON, one object per line, with request_id)
 docker logs -f fastapi-app
 
-# Stop container
+# Stop (SIGTERM: in-flight requests finish within GUNICORN_GRACEFUL_TIMEOUT)
 docker stop fastapi-app
 ```
 
+Pushing a tag `vX.Y.Z` (matching `app.__version__`) publishes the image to GHCR through
+`.github/workflows/release.yml`.
+
 ### Docker Compose Production
 
-```yaml
-version: '3.8'
+`docker-compose.yml` is the production-shaped stack (no credentials in the file, no
+published DB port, read-only root filesystem, dropped capabilities, restart policy,
+healthchecks); `docker-compose.override.yml` holds the development extras and is only
+merged by a plain `docker compose up`.
 
-services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    volumes: 
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-    healthcheck:
-      test:  ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  api:
-    build: .
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env.production
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test:  ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx. conf:/etc/nginx/nginx. conf: ro
-      - ./ssl:/etc/nginx/ssl:ro
-    depends_on:
-      - api
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
+```bash
+cp .env.example .env        # set APP_ENV=production, APP_SECRET_KEY, DB_PASSWORD, ...
+docker compose -f docker-compose.yml up -d --build
 ```
+
+Put a TLS-terminating reverse proxy (nginx, Traefik, a cloud load balancer) in front of
+the `api` service, then:
+
+- set `FORWARDED_ALLOW_IPS` to the proxy's address so `X-Forwarded-For` is trusted only
+  from it (rate limits and access logs use the real client IP);
+- set `ALLOWED_HOSTS` to the public hostnames;
+- point the proxy's health check at `/health/live` (process) or `/health/ready`
+  (process + database).
+
+See the [runbook](RUNBOOK.md) for operating it.
 
 ### Cloud Deployment
 
@@ -1227,7 +1193,7 @@ gcloud run deploy fastapi-boilerplate \
 
 6. **Write Tests**
    ```python
-   # tests/test_feature. py
+   # tests/test_feature.py
    def test_create_feature(client):
        # Test implementation
    ```
@@ -1269,23 +1235,19 @@ gcloud run deploy fastapi-boilerplate \
    ```
 
 5. **Rate Limiting**
+
+   Built in for `/auth/token`, `/auth/register` and `/auth/refresh`, per client IP
+   (`limits` library). Tune it with `RATE_LIMIT_ENABLED`, `RATE_LIMIT_LOGIN`,
+   `RATE_LIMIT_REGISTER`, `RATE_LIMIT_REFRESH` and `RATE_LIMIT_STORAGE_URI`. The default
+   `memory://` store is per worker; behind several workers or replicas use a shared store
+   (`redis://...`, which needs the `redis` package) or limit at the proxy.
+
    ```python
-   # Install slowapi
-   pip install slowapi
-   
-   # Add to main.py
-   from slowapi import Limiter, _rate_limit_exceeded_handler
-   from slowapi.util import get_remote_address
-   from slowapi.errors import RateLimitExceeded
-   
-   limiter = Limiter(key_func=get_remote_address)
-   app.state.limiter = limiter
-   app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-   
-   @router.post("/login")
-   @limiter.limit("5/minute")
-   async def login(request: Request, ... ):
-       pass
+   from fastapi import Depends
+   from app.core.rate_limit import rate_limit
+
+   @router.post("/things", dependencies=[Depends(rate_limit("20/minute", "things"))])
+   def create_thing(...): ...
    ```
 
 ### Performance Optimization
@@ -1312,14 +1274,15 @@ gcloud run deploy fastapi-boilerplate \
        return Settings()
    ```
 
-3. **Async Operations**
+3. **Sync vs async routes**
+   The database layer is synchronous (SQLAlchemy `Session`, psycopg2) and bcrypt is
+   CPU-bound. Declare routes that touch either as plain `def`: FastAPI runs them in a
+   thread pool. An `async def` route that calls them blocks the event loop for every
+   request.
    ```python
-   # Use async for I/O operations
    @router.get("/users")
-   async def get_users():
-       # Async database query
-       users = await db.execute(select(User))
-       return users
+   def get_users(db: Session = Depends(get_db)):
+       return db.query(User).all()
    ```
 
 ### Code Style
@@ -1374,13 +1337,13 @@ gcloud run deploy fastapi-boilerplate \
 **Solutions**:
 ```bash
 # Check if PostgreSQL is running
-docker-compose ps
+docker compose ps
 
 # View PostgreSQL logs
-docker-compose logs db
+docker compose logs db
 
 # Restart PostgreSQL
-docker-compose restart db
+docker compose restart db
 
 # Check environment variables
 cat .env | grep DB_
@@ -1393,7 +1356,7 @@ cat .env | grep DB_
 **Solutions**:
 ```bash
 # Reinstall dependencies
-pip install -r requirements.txt --force-reinstall
+pip install --require-hashes -r requirements-dev.txt --force-reinstall
 
 # Check Python path
 echo $PYTHONPATH
