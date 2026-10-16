@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_call: # reused by release.yml so a tag is only published after CI passes
   push:
     branches: [master, main]
   pull_request: 
@@ -15,21 +16,14 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-
-      - name: Cache pip dependencies
-        uses: actions/cache@v3
-        with:
-          path:  ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements*.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+          pip install --require-hashes -r requirements-dev.txt
 
       - name: Run Black
         run: black --check app/ tests/
@@ -51,18 +45,20 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements*.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install bandit[toml] safety
+          pip install --require-hashes -r requirements-dev.txt
 
       - name: Run Bandit
         run: bandit -r app/ -c pyproject.toml
 
-      - name: Run Safety
-        run: safety check --file requirements.txt --continue-on-error
+      - name: Audit dependencies for known vulnerabilities
+        run: pip-audit -r requirements.txt
 
   test:
     runs-on: ubuntu-latest
@@ -88,21 +84,14 @@ jobs:
       - name: Set up Python
         uses:  actions/setup-python@v5
         with:
-          python-version: '3.11'
-
-      - name: Cache pip dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements*.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+          pip install --require-hashes -r requirements-dev.txt
 
       - name: Run tests with coverage (PostgreSQL)
         env:
@@ -147,12 +136,14 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements*.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install --require-hashes -r requirements.txt
 
       - name: Apply migrations
         run: alembic upgrade head
@@ -175,10 +166,13 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with: 
+        uses: docker/build-push-action@v6
+        with:
           context: .
-          push: false
-          tags: fastapi-boilerplate:latest
+          load: true
+          tags: fastapi-boilerplate:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Smoke test the image (migrations, health, non-root)
+        run: docker/smoke-test.sh fastapi-boilerplate:ci
