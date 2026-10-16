@@ -1,38 +1,48 @@
+# Production-shaped stack: `docker compose -f docker-compose.yml up -d`.
+# A plain `docker compose up` also merges docker-compose.override.yml (development).
+#
+# Configuration comes from .env (copy .env.example). DB_PASSWORD is required.
+name: fastapi-boilerplate
+
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: mydb
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-    ports:
-      - "5432:5432"
-    volumes: 
+      POSTGRES_DB: ${DB_NAME:-mydb}
+      POSTGRES_USER: ${DB_USER:-user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d mydb"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   api:
     build: .
+    image: fastapi-boilerplate:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Inside the compose network, whatever .env says for local runs.
+      DB_HOST: db
+      DB_PORT: "5432"
     ports:
-      - "8000:8000"
-    environment: 
-      - APP_ENV=development
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_NAME=mydb
-      - DB_USER=user
-      - DB_PASSWORD=password
-      - APP_DEBUG=True
+      - "${API_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./app:/app/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # The HEALTHCHECK is defined by the image (GET /health/live).
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 40s # a bit more than GUNICORN_GRACEFUL_TIMEOUT
 
 volumes:
-  postgres_data: 
+  postgres_data:

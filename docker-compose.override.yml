@@ -1,0 +1,18 @@
+# Development conveniences, merged automatically by `docker compose up`.
+# Never used by `docker compose -f docker-compose.yml ...` (production).
+services:
+  db:
+    ports:
+      # Loopback only: the database must not be reachable from the network.
+      - "127.0.0.1:${DB_PUBLISH_PORT:-5432}:5432"
+
+  api:
+    environment:
+      APP_ENV: development
+      APP_DEBUG: "true"
+      LOG_FORMAT: console
+    # Live reload on a single process instead of gunicorn; code is mounted read-only.
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/app"]
+    volumes:
+      - ./app:/app/app:ro
+    read_only: false
