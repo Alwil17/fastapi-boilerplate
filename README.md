@@ -20,7 +20,7 @@
 - 🗄️ **Database Support** - PostgreSQL for production, SQLite for testing
 - 🔄 **Alembic Migrations** - Database schema versioning
 - 🧪 **Testing Suite** - Pytest with fixtures and mocks
-- 🐳 **Docker Ready** - Dockerfile included
+- 🐳 **Docker Ready** - Multi-stage non-root image, gunicorn, compose stack, CD to GHCR
 - 📝 **API Documentation** - Auto-generated with Swagger UI
 - ⚙️ **Configuration Management** - Pydantic Settings for env variables
 - 🔒 **Security Best Practices** - Password hashing, CORS, JWT validation
@@ -41,8 +41,12 @@ fastapi-boilerplate/
 ├── alembic/                 # Database migrations
 ├── tests/                   # Test suite
 ├── .env.example             # Environment variables template
-├── Dockerfile               # Docker configuration
-└── requirements.txt         # Python dependencies
+├── docker/                  # Entrypoint (migrations), healthcheck, smoke test
+├── Dockerfile               # Multi-stage, non-root image
+├── docker-compose.yml       # Production-shaped stack (+ .override.yml for dev)
+├── gunicorn.conf.py         # Production server settings
+├── requirements.in          # Direct dependencies (requirements.txt = hashed lock)
+└── requirements.txt         # Pinned runtime dependencies
 ```
 
 ## 🚀 Quick Start
@@ -69,7 +73,7 @@ fastapi-boilerplate/
 
 3. **Install dependencies**
    ```bash
-   pip install -r requirements.txt
+   pip install --require-hashes -r requirements-dev.txt
    ```
 
 4. **Set up environment variables**
@@ -95,13 +99,45 @@ fastapi-boilerplate/
 
 ## 🐳 Docker Deployment
 
-```bash
-# Build the image
-docker build -t fastapi-boilerplate .
+The image is multi-stage and small (~75 MB): hashed dependencies in a virtualenv, read-only code owned by root, runs as non-root (uid 10001) under gunicorn with uvicorn workers, and has a `HEALTHCHECK` on `/health/live`. On start the entrypoint runs `alembic upgrade head` (retrying while the database comes up).
 
-# Run the container
-docker run -p 8000:8000 --env-file .env fastapi-boilerplate
+```bash
+cp .env.example .env     # set APP_ENV, APP_SECRET_KEY, DB_PASSWORD, CORS_ORIGINS, ...
+
+# Development: reload on code change, database published on 127.0.0.1 only
+docker compose up -d --build
+
+# Production-shaped (skips docker-compose.override.yml): read-only root fs, no DB port
+docker compose -f docker-compose.yml up -d --build
 ```
+
+`docker-compose.yml` has no credentials: everything comes from `.env`, and `DB_PASSWORD` is required. With `APP_ENV=production` the app refuses to start on an unsafe config (default secret, `*` CORS, default DB password, debug on).
+
+Run the image alone (e.g. against a managed database):
+
+```bash
+docker build -t fastapi-boilerplate .
+docker run -p 8000:8000 --env-file .env fastapi-boilerplate
+docker/smoke-test.sh fastapi-boilerplate   # boots it on a throwaway Postgres and checks it
+```
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `WEB_CONCURRENCY` | `2` | gunicorn workers. Each has its own DB pool: connections ≤ workers × (`DB_POOL_SIZE` + `DB_MAX_OVERFLOW`) |
+| `FORWARDED_ALLOW_IPS` | `127.0.0.1,::1` | proxies trusted to set `X-Forwarded-For`/`-Proto`. Behind a load balancer set its address/network, otherwise every client appears with the proxy's IP and shares one rate-limit bucket |
+| `RUN_MIGRATIONS` | `true` | `false` to skip `alembic upgrade head` at start |
+| `GUNICORN_TIMEOUT` / `GUNICORN_GRACEFUL_TIMEOUT` | `30` / `30` | worker kill delay / time to finish in-flight requests on SIGTERM (keep the orchestrator's stop grace period above it) |
+| `GUNICORN_MAX_REQUESTS` | `0` | recycle a worker after N requests (0 = never) |
+
+Things to know when scaling out:
+- **Migrations**: with several replicas starting together, set `RUN_MIGRATIONS=false` and run `alembic upgrade head` once (one-off job / init container).
+- **Rate limiting**: the default `memory://` storage is per worker, so the effective limit is multiplied by the worker count. Use a shared store (`RATE_LIMIT_STORAGE_URI=redis://...`, which needs the `redis` package: add it to `requirements.in`).
+- **Host check**: if `ALLOWED_HOSTS` is restricted, orchestrator probes must send an allowed `Host` header (the image's own `HEALTHCHECK` already does).
+- **Releases**: pushing a tag `vX.Y.Z` (matching `app.__version__`) runs CI and publishes `ghcr.io/<owner>/<repo>:X.Y.Z`, `X.Y`, `X`.
+
+## 🔐 Dependencies
+
+`requirements.in` / `requirements-dev.in` list direct dependencies; `requirements.txt` / `requirements-dev.txt` are generated with hashes for Python 3.13 (`make lock`, needs [uv](https://docs.astral.sh/uv/)) and installed with `pip install --require-hashes`. To upgrade, run `uv pip compile ... --upgrade` (or `make lock` after editing the `.in` file) and commit the result. `pip-audit` checks the pins in CI.
 
 ## 🧪 Running Tests
 
@@ -183,7 +219,7 @@ RATE_LIMIT_LOGIN=10/minute
   ```
 
   Codes: `bad_request`, `unauthorized`, `forbidden`, `not_found`, `method_not_allowed`, `conflict`, `validation_error`, `rate_limited`, `internal_error`, `service_unavailable`, else `http_<status>`.
-- **Metrics**: `PROMETHEUS_ENABLED=true` serves `GET /metrics` (`http_requests_total`, `http_request_duration_seconds`, `http_requests_in_progress`), labelled by route template so cardinality stays bounded. Do not expose it publicly: restrict it at the proxy/network level and/or set `METRICS_TOKEN` (clients then send `Authorization: Bearer <token>`). Counters are per process: with several workers, scrape each one or use prometheus_client's multiprocess mode.
+- **Metrics**: `PROMETHEUS_ENABLED=true` serves `GET /metrics` (`http_requests_total`, `http_request_duration_seconds`, `http_requests_in_progress`), labelled by route template so cardinality stays bounded. Do not expose it publicly: restrict it at the proxy/network level and/or set `METRICS_TOKEN` (clients then send `Authorization: Bearer <token>`). Under the Docker image's gunicorn, samples of all workers are aggregated (`PROMETHEUS_MULTIPROC_DIR`, handled by `gunicorn.conf.py`); when running several plain uvicorn processes yourself, counters are per process.
 - **Sentry**: set `SENTRY_DSN` to report unhandled exceptions, tagged with the request id. Request bodies, headers, cookies, query strings and local variables are not collected (auth frames hold plaintext passwords).
 - **Version**: single source in `app/__version__`, used by the API, OpenAPI, Sentry release and `pyproject.toml`.
 
