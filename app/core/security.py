@@ -1,9 +1,10 @@
+import uuid
 from datetime import UTC, datetime, timedelta
 
 import bcrypt
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -18,23 +19,15 @@ credentials_exception = HTTPException(
 )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+ACCESS_TOKEN_TYPE = "access"
 BCRYPT_MAX_BYTES = 72  # bcrypt ignores/rejects anything beyond 72 bytes
 
 
 def get_current_user(
     token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
 ) -> UserResponse:
-    try:
-        payload = jwt.decode(
-            token, settings.APP_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
-        )
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except JWTError as e:
-        raise credentials_exception from e
-
-    user = db.query(User).filter(User.email == email).first()
+    user_id = decode_access_token(token)
+    user = db.get(User, user_id)
     if not user:
         raise credentials_exception
     return UserResponse.model_validate(user)
@@ -58,27 +51,37 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
-    """Create a JSON Web Token (JWT) access token."""
-    to_encode = data.copy()
-    expire = datetime.now(UTC) + (
-        expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
-    to_encode.update({"exp": expire})
+def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:
+    """Create a signed JWT access token for `subject` (the user id)."""
+    now = datetime.now(UTC)
+    payload = {
+        "sub": subject,
+        "type": ACCESS_TOKEN_TYPE,
+        "iat": now,
+        "exp": now
+        + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)),
+        "jti": uuid.uuid4().hex,
+        "iss": settings.JWT_ISSUER,
+        "aud": settings.JWT_AUDIENCE,
+    }
     return jwt.encode(
-        to_encode, settings.APP_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
+        payload, settings.APP_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
     )
 
 
-def verify_token(token: str):
-    """Verify a JWT token and return the username if valid."""
+def decode_access_token(token: str) -> int:
+    """Validate an access token and return the user id it was issued for."""
     try:
         payload = jwt.decode(
-            token, settings.APP_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
+            token,
+            settings.APP_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM],
+            audience=settings.JWT_AUDIENCE,
+            issuer=settings.JWT_ISSUER,
+            options={"require": ["exp", "iat", "sub", "jti", "iss", "aud"]},
         )
-        username: str = payload.get("sub")
-        if username is None:
+        if payload.get("type") != ACCESS_TOKEN_TYPE:
             raise credentials_exception
-        return username
-    except JWTError as e:
+        return int(payload["sub"])
+    except (jwt.InvalidTokenError, ValueError) as e:
         raise credentials_exception from e

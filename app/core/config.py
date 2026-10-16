@@ -69,6 +69,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     JWT_ALGORITHM: str = "HS256"
+    JWT_ISSUER: str = "fastapi-boilerplate"
+    JWT_AUDIENCE: str = "fastapi-boilerplate-api"
 
     # Prometheus
     PROMETHEUS_ENABLED: bool = False

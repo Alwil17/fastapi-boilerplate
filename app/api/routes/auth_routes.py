@@ -55,7 +55,7 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token = create_access_token(data={"sub": user.email, "role": user.role})
+    access_token = create_access_token(str(user.id))
     refresh_token = create_refresh_token(user.id, db)
 
     return TokenResponse(
@@ -96,7 +96,7 @@ def refresh_access_token(request: RefreshTokenRequest, db: Session = Depends(get
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
-    new_access_token = create_access_token(data={"sub": user.email, "role": user.role})
+    new_access_token = create_access_token(str(user.id))
     new_refresh_token = create_refresh_token(user.id, db)
 
     # Revoke old refresh token
