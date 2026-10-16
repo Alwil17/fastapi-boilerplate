@@ -1,9 +1,10 @@
-from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, DateTime, Integer, String, func
 from sqlalchemy.orm import relationship
+
 from app.db.models.base import Base
 
 CASCADE_ALL_DELETE_ORPHAN = "all, delete-orphan"
+
 
 class User(Base):
     __tablename__ = "users"
@@ -12,12 +13,15 @@ class User(Base):
     name = Column(String(100), nullable=True)
     email = Column(String(100), unique=True, index=True, nullable=False)
     hashed_password = Column(String(128), nullable=False)
-    role = Column(String(50), default="user")
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    role = Column(String(50), nullable=False, default="user", server_default="user")
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
     updated_at = Column(
-        DateTime,
-        default=datetime.now(timezone.utc),
-        onupdate=datetime.now(timezone.utc),
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     # Add the relationship to RefreshToken

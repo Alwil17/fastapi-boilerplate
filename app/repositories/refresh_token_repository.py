@@ -1,7 +1,9 @@
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime
+
 from sqlalchemy.orm import Session
+
 from app.db.models.refresh_token import RefreshToken
+
 
 class RefreshTokenRepository:
     def __init__(self, db: Session):
@@ -16,7 +18,7 @@ class RefreshTokenRepository:
         self.db.refresh(refresh_token)
         return refresh_token
 
-    def get_by_token(self, token: str) -> Optional[RefreshToken]:
+    def get_by_token(self, token: str) -> RefreshToken | None:
         return self.db.query(RefreshToken).filter(RefreshToken.token == token).first()
 
     def revoke(self, token: str) -> bool:
