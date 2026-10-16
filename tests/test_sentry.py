@@ -1,10 +1,20 @@
 import pytest
 import sentry_sdk
 from fastapi.testclient import TestClient
+from sentry_sdk.transport import Transport
 
 from app.core import sentry
 from app.core.config import settings
 from app.main import app
+
+
+class RecordingTransport(Transport):
+    events: list = []
+
+    def capture_envelope(self, envelope):
+        event = envelope.get_event()
+        if event is not None:
+            self.events.append(event)
 
 
 @pytest.fixture(autouse=True)
@@ -49,11 +59,11 @@ def test_capture_is_a_noop_when_disabled(monkeypatch):
 
 def test_unhandled_500_reaches_sentry(client, monkeypatch):
     """The 500 fallback swallows the exception, so it must report it explicitly."""
-    events = []
+    events = RecordingTransport.events = []
     real_init = sentry_sdk.init
     monkeypatch.setattr(settings, "SENTRY_DSN", "https://key@o0.ingest.sentry.io/1")
     monkeypatch.setattr(
-        sentry_sdk, "init", lambda **kw: real_init(**kw, transport=events.append)
+        sentry_sdk, "init", lambda **kw: real_init(**kw, transport=RecordingTransport)
     )
     assert sentry.init_sentry()
 
