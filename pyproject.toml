@@ -4,12 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fastapi-boilerplate"
-version = "1.0.0"
+dynamic = ["version"]
 description = "FastAPI boilerplate with clean architecture"
 authors = [{name = "Alwil17", email = "willialfred24@gmail.com"}]
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
+
+[tool.setuptools.dynamic]
+version = {attr = "app.__version__"}
 
 [tool.black]
 line-length = 88

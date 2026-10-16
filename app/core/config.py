@@ -6,6 +6,8 @@ from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy import URL, make_url
 
+from app import __version__
+
 PRODUCTION_ENVS = {"production", "prod", "staging"}
 INSECURE_SECRET_KEYS = {
     "",
@@ -37,7 +39,6 @@ class Settings(BaseSettings):
 
     # Application
     APP_NAME: str = "FastAPI Boilerplate"
-    APP_VERSION: str = "1.0.0"
     APP_DESCRIPTION: str = "FastAPI Boilerplate with clean architecture"
     APP_ENV: str = "development"
     APP_SECRET_KEY: str = "change-me"
@@ -112,6 +113,10 @@ class Settings(BaseSettings):
                 + "; ".join(problems)
             )
         return self
+
+    @property
+    def APP_VERSION(self) -> str:
+        return __version__
 
     @property
     def is_production(self) -> bool:
