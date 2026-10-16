@@ -16,7 +16,11 @@ import app.db.models  # Import all models
 config = context.config
 
 # Set sqlalchemy.url from settings
-config.set_main_option('sqlalchemy.url', settings.DATABASE_URL)
+# '%' must be doubled: ConfigParser interpolation would otherwise choke on it.
+config.set_main_option(
+    'sqlalchemy.url',
+    settings.build_database_url().render_as_string(hide_password=False).replace('%', '%%'),
+)
 
 # Interpret the config file for Python logging
 if config.config_file_name is not None:
