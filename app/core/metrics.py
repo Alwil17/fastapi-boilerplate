@@ -1,13 +1,16 @@
 import hmac
+import os
 import time
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
+    CollectorRegistry,
     Counter,
     Gauge,
     Histogram,
     generate_latest,
+    multiprocess,
 )
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -23,7 +26,12 @@ DURATION = Histogram(
     "HTTP request latency in seconds",
     ["method", "path"],
 )
-IN_PROGRESS = Gauge("http_requests_in_progress", "HTTP requests being handled")
+# "livesum": with several workers, sum the gauge over the live ones (ignored otherwise).
+IN_PROGRESS = Gauge(
+    "http_requests_in_progress",
+    "HTTP requests being handled",
+    multiprocess_mode="livesum",
+)
 
 UNMATCHED = "unmatched"
 
@@ -65,6 +73,20 @@ class MetricsMiddleware:
             DURATION.labels(method, path).observe(time.perf_counter() - started_at)
 
 
+def render_metrics() -> bytes:
+    """Prometheus text exposition.
+
+    Under gunicorn (PROMETHEUS_MULTIPROC_DIR set, see gunicorn.conf.py) each worker
+    writes its samples to a shared directory; aggregate them so a scrape sees the
+    whole service instead of whichever worker answered.
+    """
+    if os.environ.get("PROMETHEUS_MULTIPROC_DIR"):
+        registry = CollectorRegistry()
+        multiprocess.MultiProcessCollector(registry)
+        return generate_latest(registry)
+    return generate_latest()
+
+
 def _authorize(request: Request) -> None:
     token = settings.METRICS_TOKEN
     if not token:
@@ -83,7 +105,7 @@ def install_metrics(app: FastAPI) -> None:
 
     def metrics(request: Request) -> Response:
         _authorize(request)
-        return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+        return Response(render_metrics(), media_type=CONTENT_TYPE_LATEST)
 
     app.add_middleware(MetricsMiddleware)
     app.add_api_route("/metrics", metrics, include_in_schema=False)

@@ -1,3 +1,7 @@
+import os
+import subprocess
+import sys
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -93,3 +97,33 @@ def test_metrics_token_is_enforced_when_configured(metrics_client, monkeypatch):
 def test_metrics_not_exposed_unless_enabled(client):
     assert settings.PROMETHEUS_ENABLED is False
     assert client.get("/metrics").status_code == 404
+
+
+def test_multiprocess_mode_aggregates_samples_from_every_process(tmp_path):
+    """With PROMETHEUS_MULTIPROC_DIR set (gunicorn), a scrape sums all processes."""
+    script = (
+        "from fastapi import FastAPI\n"
+        "from fastapi.testclient import TestClient\n"
+        "from app.core.metrics import install_metrics\n"
+        "app = FastAPI()\n"
+        "app.get('/ping')(lambda: {})\n"
+        "install_metrics(app)\n"
+        "client = TestClient(app)\n"
+        "[client.get('/ping') for _ in range(2)]\n"
+        "print(client.get('/metrics').text)\n"
+    )
+    env = {**os.environ, "PROMETHEUS_MULTIPROC_DIR": str(tmp_path)}
+    outputs = [
+        subprocess.run(  # noqa: S603  # nosec B603
+            [sys.executable, "-c", script],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+        for _ in range(2)  # two processes, one after the other
+    ]
+    labels = {"method": "GET", "path": "/ping", "status": "200"}
+    # The second process also reports what the first one counted.
+    assert _sample(outputs[0], "http_requests_total", **labels) == 2
+    assert _sample(outputs[1], "http_requests_total", **labels) == 4
