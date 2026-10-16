@@ -28,3 +28,13 @@ class RefreshTokenRepository:
         refresh_token.revoked = True
         self.db.commit()
         return True
+
+    def delete_expired(self, now: datetime) -> int:
+        """Delete every token (revoked or not) whose expiry is before `now`."""
+        deleted = (
+            self.db.query(RefreshToken)
+            .filter(RefreshToken.expires_at < now)
+            .delete(synchronize_session=False)
+        )
+        self.db.commit()
+        return deleted
