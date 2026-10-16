@@ -1,3 +1,4 @@
+import json
 import os
 from functools import lru_cache
 from typing import Annotated, Literal
@@ -27,7 +28,7 @@ def _split_csv(value):
     if isinstance(value, str):
         value = value.strip()
         if value.startswith("["):
-            return value  # let pydantic parse it as JSON
+            return json.loads(value)  # NoDecode fields are not JSON-decoded for us
         return [item.strip() for item in value.split(",") if item.strip()]
     return value
 
@@ -48,7 +49,7 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"  # nosec B104
     PORT: int = 8000
 
-    # HTTP (comma-separated lists, e.g. CORS_ORIGINS=https://a.com,https://b.com)
+    # HTTP (comma-separated or JSON lists, e.g. CORS_ORIGINS=https://a.com,https://b.com)
     CORS_ORIGINS: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
     ALLOWED_HOSTS: Annotated[list[str], NoDecode] = ["*"]
 

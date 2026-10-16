@@ -65,3 +65,23 @@ def test_database_url_escapes_special_characters():
 
 def test_default_access_token_is_short_lived():
     assert Settings(_env_file=None).ACCESS_TOKEN_EXPIRE_MINUTES == 15
+
+
+def test_csv_settings_accept_a_json_list():
+    s = make(CORS_ORIGINS='["https://a.example.com", "https://b.example.com"]')
+    assert s.CORS_ORIGINS == ["https://a.example.com", "https://b.example.com"]
+
+
+def test_csv_settings_accept_comma_separated_values():
+    s = make(ALLOWED_HOSTS=" a.example.com , b.example.com ,")
+    assert s.ALLOWED_HOSTS == ["a.example.com", "b.example.com"]
+
+
+def test_log_options_are_normalised():
+    s = make(LOG_LEVEL="warning", LOG_FORMAT="JSON")
+    assert (s.LOG_LEVEL, s.LOG_FORMAT) == ("WARNING", "json")
+
+
+def test_json_list_in_the_environment(monkeypatch):
+    monkeypatch.setenv("CORS_ORIGINS", '["https://a.example.com"]')
+    assert Settings(_env_file=None).CORS_ORIGINS == ["https://a.example.com"]
