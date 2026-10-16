@@ -4,7 +4,7 @@ SQLAlchemy
 psycopg2-binary
 alembic
 pydantic[email]
-python-jose[cryptography]
+PyJWT>=2.8
 bcrypt
 python-multipart
 pydantic-settings>=2.7

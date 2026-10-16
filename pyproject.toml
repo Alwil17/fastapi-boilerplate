@@ -74,8 +74,6 @@ strict_equality = true
 
 [[tool.mypy.overrides]]
 module = [
-    "jose.*",
-    "passlib.*",
     "alembic.*",
 ]
 ignore_missing_imports = true

@@ -1454,7 +1454,7 @@ uvicorn app.main:app --port 8001
 
 ```python
 # Debug JWT
-from jose import jwt
+import jwt
 from app.core.config import settings
 
 token = "your-token-here"

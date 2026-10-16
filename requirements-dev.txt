@@ -16,6 +16,3 @@ safety>=3.0.0
 
 # Pre-commit
 pre-commit>=3.6.0
-
-# Type stubs
-types-python-jose>=3.3.4
