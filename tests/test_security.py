@@ -76,3 +76,7 @@ def test_password_hash_roundtrip():
     hashed = hash_password("s3cret-pass")
     assert verify_password("s3cret-pass", hashed)
     assert not verify_password("other", hashed)
+
+
+def test_verify_password_rejects_a_malformed_hash():
+    assert verify_password("whatever", "not-a-bcrypt-hash") is False
