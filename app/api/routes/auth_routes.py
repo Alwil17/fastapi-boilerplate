@@ -54,7 +54,7 @@ def login(
     return TokenResponse(
         access_token=create_access_token(str(user.id)),
         refresh_token=TokenService(db).issue(user.id),
-        token_type="bearer",
+        token_type="bearer",  # nosec B106
     )
 
 
@@ -83,7 +83,7 @@ def refresh_access_token(request: RefreshTokenRequest, db: Session = Depends(get
     return TokenResponse(
         access_token=create_access_token(str(user.id)),
         refresh_token=new_refresh_token,
-        token_type="bearer",
+        token_type="bearer",  # nosec B106
     )
 
 

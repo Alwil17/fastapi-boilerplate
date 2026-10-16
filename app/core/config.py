@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     APP_DEBUG: bool = False
 
     # Server
-    HOST: str = "0.0.0.0"
+    HOST: str = "0.0.0.0"  # nosec B104
     PORT: int = 8000
 
     # HTTP (comma-separated lists, e.g. CORS_ORIGINS=https://a.com,https://b.com)
@@ -122,7 +122,7 @@ class Settings(BaseSettings):
             problems.append("APP_DEBUG must be False")
         if "*" in self.CORS_ORIGINS:
             problems.append("CORS_ORIGINS must not contain '*'")
-        if self.DATABASE_URL is None and self.DB_PASSWORD == "password":
+        if self.DATABASE_URL is None and self.DB_PASSWORD == "password":  # nosec B105
             problems.append("DB_PASSWORD must not be the default value")
         if problems:
             raise ValueError(

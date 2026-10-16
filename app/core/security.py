@@ -21,7 +21,7 @@ credentials_exception = HTTPException(
 )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
-ACCESS_TOKEN_TYPE = "access"
+ACCESS_TOKEN_TYPE = "access"  # nosec B105
 BCRYPT_MAX_BYTES = 72  # bcrypt ignores/rejects anything beyond 72 bytes
 
 
