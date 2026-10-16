@@ -1,11 +1,12 @@
-from typing import List, Optional
 from sqlalchemy.orm import Session
+
 from app.core.security import verify_password
 from app.db.models.user import User
 from app.repositories.user_repository import UserRepository
-from app.schemas.user_dto import UserCreateDTO, UserResponse, UserUpdateDTO
+from app.schemas.user_dto import UserCreateDTO, UserUpdateDTO
 
 USER_NOT_FOUND = "User not found"
+
 
 class UserService:
     def __init__(self, db_session: Session):
@@ -28,13 +29,13 @@ class UserService:
             return None
         return user
 
-    def get_user_by_id(self, user_id: int) -> Optional[User]:
+    def get_user_by_id(self, user_id: int) -> User | None:
         return self.repository.get_by_id(user_id)
 
-    def list_users(self) -> List[User]:
+    def list_users(self) -> list[User]:
         return self.repository.list()
 
-    def update_user(self, user_id: int, user_data: UserUpdateDTO) -> Optional[User]:
+    def update_user(self, user_id: int, user_data: UserUpdateDTO) -> User | None:
         return self.repository.update(user_id, user_data)
 
     def delete_user(self, user_id: int) -> bool:
