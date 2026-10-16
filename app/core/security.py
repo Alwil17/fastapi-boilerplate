@@ -1,3 +1,5 @@
+import hashlib
+import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -53,6 +55,16 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         )
     except ValueError:
         return False
+
+
+def generate_refresh_token() -> str:
+    """Opaque, high-entropy refresh token. Only its hash is persisted."""
+    return secrets.token_urlsafe(48)
+
+
+def hash_refresh_token(token: str) -> str:
+    # Plain SHA-256 is enough: the input is 384 random bits, not a guessable password.
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:

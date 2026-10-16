@@ -17,7 +17,11 @@ class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
 
     id = Column(Integer, primary_key=True, index=True)
-    token = Column(String, unique=True, index=True)
+    # SHA-256 hex of the opaque token handed to the client; the raw token is never stored.
+    token_hash = Column(String(64), unique=True, index=True, nullable=False)
+    # All tokens descending from one login share a family, so a replayed (already
+    # rotated) token can revoke the whole chain.
+    family_id = Column(String(32), nullable=False, index=True)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     revoked = Column(Boolean, nullable=False, default=False, server_default=false())
     user_id = Column(
