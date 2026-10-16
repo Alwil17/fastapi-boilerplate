@@ -194,3 +194,42 @@ def test_email_is_case_insensitive(client):
         },
     )
     assert duplicate.status_code == 400
+
+
+def _deactivate(db_session, email="test@example.com"):
+    from app.db.models.user import User
+
+    db_session.query(User).filter_by(email=email).one().is_active = False
+    db_session.commit()
+
+
+def test_inactive_user_cannot_login(client, db_session):
+    _register_and_login(client)
+    _deactivate(db_session)
+    response = client.post(
+        "/auth/token",
+        data={"username": "test@example.com", "password": "testpassword123"},
+    )
+    assert response.status_code == 401
+
+
+def test_inactive_user_existing_token_rejected(client, db_session):
+    tokens = _register_and_login(client)
+    _deactivate(db_session)
+    response = client.get(
+        "/auth/me", headers={"Authorization": f"Bearer {tokens['access_token']}"}
+    )
+    assert response.status_code == 401
+
+
+def test_login_unknown_email_same_response_as_wrong_password(client):
+    _register_and_login(client)
+    unknown = client.post(
+        "/auth/token", data={"username": "nobody@example.com", "password": "whatever1"}
+    )
+    wrong = client.post(
+        "/auth/token",
+        data={"username": "test@example.com", "password": "whatever1"},
+    )
+    assert unknown.status_code == wrong.status_code == 401
+    assert unknown.json() == wrong.json()

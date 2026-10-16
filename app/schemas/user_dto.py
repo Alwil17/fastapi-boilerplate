@@ -53,6 +53,7 @@ class UserResponse(BaseModel):
     name: str | None = None
     email: EmailStr
     role: str
+    is_active: bool
     created_at: datetime
     updated_at: datetime
 

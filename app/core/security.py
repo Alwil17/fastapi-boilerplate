@@ -28,7 +28,7 @@ def get_current_user(
 ) -> UserResponse:
     user_id = decode_access_token(token)
     user = db.get(User, user_id)
-    if not user:
+    if not user or not user.is_active:
         raise credentials_exception
     return UserResponse.model_validate(user)
 
@@ -38,6 +38,10 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(
         password.encode("utf-8")[:BCRYPT_MAX_BYTES], bcrypt.gensalt()
     ).decode("utf-8")
+
+
+# Verified against when the account does not exist, so login timing does not reveal it.
+DUMMY_PASSWORD_HASH = bcrypt.hashpw(b"dummy", bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

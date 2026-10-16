@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.core.security import verify_password
+from app.core.security import DUMMY_PASSWORD_HASH, verify_password
 from app.db.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.schemas.user_dto import UserCreateDTO, UserUpdateDTO
@@ -21,11 +21,12 @@ class UserService:
     def get_user_by_email(self, email: str) -> User:
         return self.repository.get_by_email(email)
 
-    def authenticate_user(self, email: str, password: str) -> User:
+    def authenticate_user(self, email: str, password: str) -> User | None:
         user = self.get_user_by_email(email.strip().lower())
-        if not user:
-            return None
-        if not verify_password(password, user.hashed_password):
+        # Always run one bcrypt check so unknown emails cost the same as wrong passwords.
+        hashed = user.hashed_password if user else DUMMY_PASSWORD_HASH
+        password_ok = verify_password(password, hashed)
+        if not user or not password_ok or not user.is_active:
             return None
         return user
 
