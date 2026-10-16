@@ -17,7 +17,7 @@
 
 ### Prerequisites
 
-- **Python 3.11+**
+- **Python 3.13+**
 - **PostgreSQL 12+** (or use SQLite for development)
 - **Docker & Docker Compose** (optional but recommended)
 - **Git**
@@ -223,7 +223,7 @@ black app/main.py
 
 **Configuration** (in `pyproject.toml`):
 - Line length: 88 characters
-- Target Python version: 3.11
+- Target Python version: 3.13
 
 #### **isort** - Import Sorter
 

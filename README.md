@@ -49,7 +49,7 @@ fastapi-boilerplate/
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.13+
 - PostgreSQL (or use SQLite for local dev)
 - pip or poetry
 
