@@ -153,7 +153,7 @@ def test_refresh_token_expired(client, db_session):
         "/auth/refresh", json={"refresh_token": tokens["refresh_token"]}
     )
     assert response.status_code == 401
-    assert response.json()["detail"] == "Refresh token expired"
+    assert response.json()["error"]["message"] == "Refresh token expired"
 
 
 def test_refresh_token_unknown(client):
@@ -235,4 +235,6 @@ def test_login_unknown_email_same_response_as_wrong_password(client):
         data={"username": "test@example.com", "password": "whatever1"},
     )
     assert unknown.status_code == wrong.status_code == 401
-    assert unknown.json() == wrong.json()
+    # request_id legitimately differs per request
+    assert unknown.json()["error"]["code"] == wrong.json()["error"]["code"]
+    assert unknown.json()["error"]["message"] == wrong.json()["error"]["message"]

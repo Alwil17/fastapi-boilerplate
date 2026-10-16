@@ -30,7 +30,8 @@ def test_429_has_retry_after(client, limited):
     response = _login(client)
     assert response.status_code == 429
     assert int(response.headers["Retry-After"]) >= 1
-    assert response.json() == {"detail": "Too many requests"}
+    assert response.json()["error"]["code"] == "rate_limited"
+    assert response.json()["error"]["message"] == "Too many requests"
 
 
 def test_limits_are_per_scope(client, limited):
