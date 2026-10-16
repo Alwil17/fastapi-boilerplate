@@ -14,8 +14,8 @@ lock:  ## Re-resolve requirements*.txt from requirements*.in (needs uv)
 dev:  ## Run development server
 	uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-test:  ## Run tests
-	pytest -v --cov=app tests/
+test:  ## Run tests with the coverage gate used in CI
+	pytest --cov=app --cov-fail-under=95 tests/
 
 lint:  ## Run linting
 	ruff check app/ tests/

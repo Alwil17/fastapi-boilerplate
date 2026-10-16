@@ -4,8 +4,16 @@ on:
   workflow_call: # reused by release.yml so a tag is only published after CI passes
   push:
     branches: [master, main]
-  pull_request: 
+  pull_request:
     branches: [master, main]
+
+permissions:
+  contents: read
+
+# A new push supersedes the previous run on a PR; never cancel runs on master or tags.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   lint:
@@ -34,8 +42,8 @@ jobs:
       - name: Run Ruff
         run: ruff check app/ tests/
 
-      # - name:  Run MyPy
-      #   run: mypy app/
+      - name: Run MyPy
+        run: mypy app/
 
   security:
     runs-on: ubuntu-latest
@@ -62,7 +70,11 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.13', '3.14']
+
     services:
       postgres:
         image: postgres:16-alpine
@@ -81,10 +93,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses:  actions/setup-python@v5
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: requirements*.txt
 
@@ -99,14 +111,15 @@ jobs:
           DATABASE_URL: 'sqlite:///:memory:'
           TEST_DATABASE_URL: postgresql+psycopg2://test_user:test_password@localhost:5432/test_db
         run: |
-          pytest --cov=app tests/ --cov-report=xml --cov-report=term
+          pytest --cov=app tests/ --cov-report=xml --cov-report=term --cov-fail-under=95
 
       - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.13'
         uses: codecov/codecov-action@v5
         with:
           files: ./coverage.xml
           token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
+          fail_ci_if_error: true
 
   migrations:
     runs-on: ubuntu-latest
@@ -176,3 +189,13 @@ jobs:
 
       - name: Smoke test the image (migrations, health, non-root)
         run: docker/smoke-test.sh fastapi-boilerplate:ci
+
+      # Pinned to a commit: this action runs with access to the built image.
+      - name: Scan the image for vulnerabilities (Trivy)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: fastapi-boilerplate:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          vuln-type: os,library
