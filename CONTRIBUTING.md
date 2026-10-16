@@ -30,18 +30,24 @@ We welcome all improvements, bug fixes, documentation, and ideas for make this a
 
 5. **Make your changes**
    - Add features, fix bugs, or improve documentation.
-   - Follow the project's Clean/Hexagonal Architecture principles.
-   - Ensure changes align with mental wellness tracking objectives.
+   - Follow the layering: routes call services, services call repositories, repositories own the SQL.
+   - Keep the boilerplate generic: no domain-specific features.
 
 6. **Test your changes**
    ```bash
-   pytest
+   make test       # pytest with the 95% coverage gate CI enforces
+   make lint       # ruff + mypy
+   make format     # black + isort
+   make security   # bandit + pip-audit
    ```
+   If you change the models, add an Alembic migration (`make migrate-create msg="..."`);
+   CI fails when the models and migrations drift apart. If you change
+   `requirements*.in`, run `make lock` and commit the regenerated `.txt` files.
 
 7. **Commit and push**
    ```bash
    git add .
-   git commit -m "Describe your change"
+   git commit -m "feat: describe your change"   # Conventional Commits: feat, fix, docs, test, refactor, build, ci
    git push origin my-feature
    ```
 
@@ -61,13 +67,12 @@ We welcome all improvements, bug fixes, documentation, and ideas for make this a
   - For documentation: `docs/short-description`
   - Example:  
     ```
-    git checkout -b feat/mood-analytics-endpoint
+    git checkout -b feat/password-reset-endpoint
     git checkout -b bugfix/fix-jwt-validation
-    git checkout -b feat/nlp-sentiment-analysis
     ```
 
 - **Pull Request Guidelines:**
-  - Use a clear and descriptive title (e.g. `feat: add mood trend analysis endpoint`)
+  - Use a clear and descriptive title (e.g. `feat: add password reset endpoint`)
   - In the PR description, explain **what** you changed and **why**
   - Reference related issues by number if applicable (e.g. `Closes #42`)
   - Make sure your branch is up to date with the target branch (usually `main`)
@@ -80,7 +85,9 @@ We welcome all improvements, bug fixes, documentation, and ideas for make this a
 
 - Use [PEP8](https://www.python.org/dev/peps/pep-0008/) conventions.
 - Use type hints and docstrings for all functions and classes.
-- Follow FastAPI standards (async/await, Depends, response_model).
+- Follow FastAPI standards (Depends, response_model). Routes that use the synchronous
+  database session or bcrypt are plain `def`, not `async def`, so they run in the thread
+  pool instead of blocking the event loop.
 - Keep functions and classes small and focused.
 - Use Pydantic models for data validation in schemas/.
 
@@ -90,12 +97,12 @@ We welcome all improvements, bug fixes, documentation, and ideas for make this a
 
 When adding new features, follow the established architecture:
 
-- `app/api/routes/` - REST endpoints (auth, mood, chat, recommendations)
+- `app/api/routes/` - REST endpoints (auth, users, health)
 - `app/core/` - Security, configuration, logging
-- `app/repositories/` - Business logic and database access
+- `app/repositories/` - Database access
 - `app/db/models/` - SQLAlchemy models
 - `app/schemas/` - Pydantic models for I/O validation
-- `app/services/` - NLP, recommendation engine, external services
+- `app/services/` - Business logic
 - `tests/` - Test files with Pytest
 
 ---
@@ -105,8 +112,9 @@ When adding new features, follow the established architecture:
 - Add or update tests for your changes in the `tests/` directory.
 - Make sure all tests pass with `pytest`.
 - For new API endpoints, add corresponding integration tests.
-- Test edge cases, especially for mental health data handling.
-- Mock external services (Hugging Face API calls, etc.).
+- Test edge cases: invalid input, expired or revoked tokens, missing or duplicate records.
+- Mock external services; tests must not need the network.
+- Coverage must stay at or above 95% (`make test`).
 
 ---
 
@@ -115,24 +123,24 @@ When adding new features, follow the established architecture:
 - Update the `README.md` if your change affects setup or usage.
 - Add docstrings to new functions, especially in services/ and repositories/.
 - Document new API endpoints with FastAPI's automatic documentation.
-- Add comments to clarify complex NLP or recommendation logic.
+- Add comments that explain why, not what, for anything non-obvious.
+- Add a line under *Unreleased* in `CHANGELOG.md`.
 
 ---
 
 ## 🔒 Security & Privacy Considerations
 
-- Follow GDPR compliance requirements for user data.
+- Never log or return passwords, tokens or other credentials, including in error messages.
 - Ensure proper JWT token handling and validation.
-- Be mindful of sensitive mental health data in logs and error messages.
 - Use proper database migrations with Alembic for schema changes.
+- Report vulnerabilities privately, see [SECURITY.md](SECURITY.md).
 
 ---
 
 ## 💡 Suggestions & Issues
 
-- For feature requests or bug reports, please [open an issue](https://github.com/YOUR_USERNAME/fastapi-boilerplate/issues).
+- For feature requests or bug reports, please [open an issue](https://github.com/Alwil17/fastapi-boilerplate/issues).
 - Be clear and provide context.
-- Consider user privacy and data sensitivity in all suggestions.
 
 ---
 
