@@ -1,4 +1,5 @@
-# Dev/CI tooling, resolved on top of the runtime pins. Regenerate with: make lock
+# Runtime + dev/CI tooling, resolved against the runtime pins. Regenerate with: make lock
+-r requirements.in
 -c requirements.txt
 
 # Testing
