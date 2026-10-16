@@ -120,11 +120,18 @@ pytest tests/test_auth.py -v
 
 ### Authentication
 - `POST /auth/register` - Register new user
-- `POST /auth/token` - Login (get JWT tokens)
-- `POST /auth/refresh` - Refresh access token
+- `POST /auth/token` - Login (get access JWT + opaque refresh token)
+- `POST /auth/refresh` - Rotate the refresh token (single use) and get a new access token
+- `POST /auth/logout` - Revoke a refresh token and its whole family
+- `POST /auth/logout-all` - Revoke every refresh token of the current user
 - `GET /auth/me` - Get current user info
 
+### Users
+- `GET /users?skip=0&limit=50` - List users (admin only)
+
 ### Health Check
+- `GET /health/live` - Liveness
+- `GET /health/ready` - Readiness (checks the database)
 - `GET /health` - API health status
 - `GET /` - Welcome message
 
@@ -147,9 +154,22 @@ DB_USER=user
 DB_PASSWORD=password
 
 # JWT
-ACCESS_TOKEN_EXPIRE_MINUTES=1440
+ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=7
+
+# Rate limiting (per client IP; use redis://host:6379 when running several workers)
+RATE_LIMIT_STORAGE_URI=memory://
+RATE_LIMIT_LOGIN=10/minute
 ```
+
+### Auth and security notes
+- Access tokens are short-lived JWTs (`sub` = user id, `iss`/`aud`/`jti`/`type` checked). The role is read from the database on each request, so demotion is immediate.
+- Refresh tokens are opaque, stored only as SHA-256 hashes and single use. Replaying a rotated token revokes the whole login family.
+- Passwords: 8 to 72 bytes (bcrypt limit). Emails are case-insensitive.
+- Create the first admin: `ADMIN_PASSWORD=... python -m app.jobs.create_admin admin@example.com`.
+- Purge expired refresh tokens on a schedule: `python -m app.jobs.purge_refresh_tokens`.
+- Behind a reverse proxy, set `FORWARDED_ALLOW_IPS` to the proxy address so rate limiting sees real client IPs.
+- Known limit: `POST /auth/register` reveals whether an email is taken; fixing that needs an email verification flow.
 
 ## 🏗️ Architecture Principles
 
