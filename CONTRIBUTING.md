@@ -25,7 +25,7 @@ We welcome all improvements, bug fixes, documentation, and ideas for make this a
    ```bash
    python -m venv .venv
    source .venv/bin/activate  # or .venv\Scripts\activate on Windows
-   pip install -r requirements.txt
+   pip install --require-hashes -r requirements-dev.txt
    ```
 
 5. **Make your changes**
