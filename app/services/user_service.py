@@ -22,7 +22,7 @@ class UserService:
         return self.repository.get_by_email(email)
 
     def authenticate_user(self, email: str, password: str) -> User:
-        user = self.get_user_by_email(email)
+        user = self.get_user_by_email(email.strip().lower())
         if not user:
             return None
         if not verify_password(password, user.hashed_password):

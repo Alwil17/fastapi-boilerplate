@@ -1,5 +1,7 @@
 from datetime import UTC
 
+import pytest
+
 
 def test_register_user(client):
     """Test user registration."""
@@ -154,3 +156,41 @@ def test_refresh_token_expired(client, db_session):
 def test_refresh_token_unknown(client):
     response = client.post("/auth/refresh", json={"refresh_token": "nope"})
     assert response.status_code == 401
+
+
+@pytest.mark.parametrize(
+    "password",
+    ["short", " " * 12, "é" * 40],  # too short, blank, over 72 bytes
+)
+def test_register_rejects_bad_password(client, password):
+    response = client.post(
+        "/auth/register",
+        json={"name": "Bad", "email": "bad@example.com", "password": password},
+    )
+    assert response.status_code == 422
+
+
+def test_register_rejects_empty_name(client):
+    response = client.post(
+        "/auth/register",
+        json={"name": "  ", "email": "n@example.com", "password": "testpassword123"},
+    )
+    assert response.status_code == 422
+
+
+def test_email_is_case_insensitive(client):
+    _register_and_login(client, email="Mixed@Example.com")
+    response = client.post(
+        "/auth/token",
+        data={"username": "MIXED@example.COM", "password": "testpassword123"},
+    )
+    assert response.status_code == 200
+    duplicate = client.post(
+        "/auth/register",
+        json={
+            "name": "Dup",
+            "email": "mixed@example.com",
+            "password": "testpassword123",
+        },
+    )
+    assert duplicate.status_code == 400
