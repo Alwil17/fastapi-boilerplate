@@ -3,11 +3,10 @@
 [![Use this template](https://img.shields.io/badge/Use%20this-Template-2ea44f?style=for-the-badge&logo=github)](https://github.com/Alwil17/fastapi-boilerplate/generate)
 
 ![CI](https://github.com/Alwil17/fastapi-boilerplate/workflows/CI/badge.svg)
-![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
+![Python](https://img.shields.io/badge/python-3.13+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
-![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)
 ![Codecov](https://codecov.io/gh/Alwil17/fastapi-boilerplate/branch/master/graph/badge.svg)
 ![Template checkbox](https://docs.github.com/assets/cb-24935/images/help/repository/template-repository-checkbox.png)
 
@@ -23,7 +22,9 @@
 - 🐳 **Docker Ready** - Multi-stage non-root image, gunicorn, compose stack, CD to GHCR
 - 📝 **API Documentation** - Auto-generated with Swagger UI
 - ⚙️ **Configuration Management** - Pydantic Settings for env variables
-- 🔒 **Security Best Practices** - Password hashing, CORS, JWT validation
+- 🔒 **Security Best Practices** - bcrypt, rotating hashed refresh tokens with reuse detection, roles (RBAC), rate limiting, security headers, trusted hosts, fail-fast production config
+- 🔭 **Observability** - JSON logs with request ids, one error format, Prometheus metrics, optional Sentry
+- 🚦 **CI/CD** - Lint, mypy, tests on Postgres (coverage gate), Bandit, pip-audit, migration drift check, image smoke test and Trivy scan, Dependabot
 
 ## 📂 Project Structure
 
@@ -145,12 +146,22 @@ Things to know when scaling out:
 # Run all tests
 pytest
 
-# Run with coverage
-pytest --cov=app tests/
+# Run with the coverage gate used in CI (fails under 95%)
+make test
+
+# Type check
+mypy app/
 
 # Run specific test file
 pytest tests/test_auth.py -v
 ```
+
+Load test a running API (k6 in Docker): `make loadtest BASE_URL=http://host.docker.internal:8000`, see [loadtest/api.js](loadtest/api.js).
+
+## 🛟 Operations and security
+
+- [docs/RUNBOOK.md](docs/RUNBOOK.md) - deploy, roll back, health checks, tracing a request, common incidents, routine jobs.
+- [SECURITY.md](SECURITY.md) - reporting a vulnerability and the production hardening checklist.
 
 ## 📖 API Endpoints
 
