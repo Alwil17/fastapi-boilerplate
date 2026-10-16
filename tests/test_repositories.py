@@ -31,11 +31,11 @@ def test_delete_expired_removes_only_expired_tokens(db_session):
     user = _make_users(db_session, 1)[0]
     repo = RefreshTokenRepository(db_session)
     now = datetime.now(UTC)
-    repo.create(user.id, "expired", now - timedelta(days=1))
-    repo.create(user.id, "valid", now + timedelta(days=1))
+    repo.create(user.id, "expired", now - timedelta(days=1), "fam")
+    repo.create(user.id, "valid", now + timedelta(days=1), "fam")
 
     deleted = repo.delete_expired(now)
 
     assert deleted == 1
-    assert repo.get_by_token("expired") is None
-    assert repo.get_by_token("valid") is not None
+    assert repo.get_by_hash("expired") is None
+    assert repo.get_by_hash("valid") is not None

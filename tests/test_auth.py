@@ -137,11 +137,14 @@ def test_refresh_token_replay_rejected(client):
 def test_refresh_token_expired(client, db_session):
     from datetime import datetime, timedelta
 
+    from app.core.security import hash_refresh_token
     from app.db.models.refresh_token import RefreshToken
 
     tokens = _register_and_login(client)
     stored = (
-        db_session.query(RefreshToken).filter_by(token=tokens["refresh_token"]).one()
+        db_session.query(RefreshToken)
+        .filter_by(token_hash=hash_refresh_token(tokens["refresh_token"]))
+        .one()
     )
     stored.expires_at = datetime.now(UTC) - timedelta(minutes=1)
     db_session.commit()

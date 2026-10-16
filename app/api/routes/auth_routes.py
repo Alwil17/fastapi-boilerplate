@@ -1,28 +1,15 @@
-import secrets
-from datetime import UTC, datetime, timedelta
-
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core.security import create_access_token, get_current_user
 from app.db.base import get_db
-from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.schemas.auth_dto import RefreshTokenRequest, TokenResponse
 from app.schemas.user_dto import UserCreateDTO, UserResponse
+from app.services.token_service import InvalidRefreshToken, TokenService
 from app.services.user_service import UserService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-
-
-def create_refresh_token(user_id: int, db: Session):
-    """Create a new refresh token for a user."""
-    token = secrets.token_hex(32)
-    expires_at = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    refresh_token_repo = RefreshTokenRepository(db)
-    refresh_token_repo.create(user_id, token, expires_at)
-    return token
 
 
 @router.post(
@@ -55,11 +42,10 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token = create_access_token(str(user.id))
-    refresh_token = create_refresh_token(user.id, db)
-
     return TokenResponse(
-        access_token=access_token, refresh_token=refresh_token, token_type="bearer"
+        access_token=create_access_token(str(user.id)),
+        refresh_token=TokenService(db).issue(user.id),
+        token_type="bearer",
     )
 
 
@@ -71,39 +57,35 @@ def get_current_user_info(current_user: UserResponse = Depends(get_current_user)
 
 @router.post("/refresh", response_model=TokenResponse)
 def refresh_access_token(request: RefreshTokenRequest, db: Session = Depends(get_db)):
-    """Refresh access token using refresh token."""
-    refresh_token_repo = RefreshTokenRepository(db)
-    stored_token = refresh_token_repo.get_by_token(request.refresh_token)
-
-    if not stored_token or stored_token.revoked:
+    """Exchange a refresh token for a new access/refresh pair (single-use rotation)."""
+    try:
+        user, new_refresh_token = TokenService(db).rotate(request.refresh_token)
+    except InvalidRefreshToken as e:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
-        )
-
-    expires_at = stored_token.expires_at
-    if expires_at.tzinfo is None:  # SQLite returns naive datetimes
-        expires_at = expires_at.replace(tzinfo=UTC)
-    if expires_at < datetime.now(UTC):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired"
-        )
-
-    user_service = UserService(db)
-    user = user_service.get_user_by_id(stored_token.user_id)
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-
-    new_access_token = create_access_token(str(user.id))
-    new_refresh_token = create_refresh_token(user.id, db)
-
-    # Revoke old refresh token
-    refresh_token_repo.revoke(request.refresh_token)
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from e
 
     return TokenResponse(
-        access_token=new_access_token,
+        access_token=create_access_token(str(user.id)),
         refresh_token=new_refresh_token,
         token_type="bearer",
     )
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(request: RefreshTokenRequest, db: Session = Depends(get_db)):
+    """Revoke a refresh token (and every token rotated from it)."""
+    TokenService(db).revoke(request.refresh_token)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
+def logout_all(
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Revoke every refresh token of the current user (all devices)."""
+    TokenService(db).revoke_all(current_user.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
