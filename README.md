@@ -40,7 +40,7 @@ fastapi-boilerplate/
 │   └── schemas/             # Pydantic models (DTOs)
 ├── alembic/                 # Database migrations
 ├── tests/                   # Test suite
-├── . env. example             # Environment variables template
+├── .env.example             # Environment variables template
 ├── Dockerfile               # Docker configuration
 └── requirements.txt         # Python dependencies
 ```
@@ -63,7 +63,7 @@ fastapi-boilerplate/
 
 2. **Create virtual environment**
    ```bash
-   python -m venv . venv
+   python -m venv .venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    ```
 

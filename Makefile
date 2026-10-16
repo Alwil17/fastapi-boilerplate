@@ -24,7 +24,7 @@ format:   ## Format code
 clean:  ## Clean cache files
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
-	rm -rf .pytest_cache . coverage htmlcov
+	rm -rf .pytest_cache .coverage htmlcov
 
 docker-up:  ## Start Docker containers
 	docker-compose up -d

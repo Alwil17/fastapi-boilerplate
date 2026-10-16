@@ -32,12 +32,12 @@ git clone https://github.com/Alwil17/fastapi-boilerplate.git
 cd fastapi-boilerplate
 
 # 2. Create virtual environment
-python -m venv . venv
+python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
 # 3. Install dependencies
 pip install -r requirements.txt
-pip install -r requirements-dev. txt
+pip install -r requirements-dev.txt
 
 # 4. Setup pre-commit hooks
 pre-commit install
@@ -101,7 +101,6 @@ fastapi-boilerplate/
 │   ├── core/                     # Core configuration
 │   │   ├── __init__.py
 │   │   ├── config.py             # Application settings
-│   │   ├── config_test.py        # Test configuration
 │   │   └── security.py           # JWT & password hashing
 │   │
 │   ├── db/                       # Database layer
@@ -157,9 +156,8 @@ fastapi-boilerplate/
 ├── Dockerfile                    # Docker image definition
 ├── Makefile                      # Development commands
 ├── pyproject.toml                # Python project configuration
-├── pytest.ini                    # Pytest configuration
 ├── requirements.txt              # Production dependencies
-├── requirements-dev. txt          # Development dependencies
+├── requirements-dev.txt          # Development dependencies
 ├── README.md                     # Project overview
 ├── LICENSE                       # MIT License
 ├── CODE_OF_CONDUCT.md            # Code of conduct
