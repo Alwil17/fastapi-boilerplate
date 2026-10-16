@@ -7,6 +7,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 import app.api.routes.auth_routes as auth_endpoints
 import app.api.routes.health_routes as health_endpoints
+import app.api.routes.user_routes as user_endpoints
 from app.core.config import settings
 from app.db.base import engine
 
@@ -37,6 +38,7 @@ app = FastAPI(
 
 app.include_router(health_endpoints.router)
 app.include_router(auth_endpoints.router)
+app.include_router(user_endpoints.router)
 
 app.add_middleware(
     CORSMiddleware,

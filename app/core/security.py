@@ -101,3 +101,16 @@ def decode_access_token(token: str) -> int:
         return int(payload["sub"])
     except (jwt.InvalidTokenError, ValueError) as e:
         raise credentials_exception from e
+
+
+def require_role(*roles: str):
+    """Dependency factory: allow only authenticated users having one of `roles`."""
+
+    def checker(current_user: UserResponse = Depends(get_current_user)) -> UserResponse:
+        if current_user.role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions"
+            )
+        return current_user
+
+    return checker
