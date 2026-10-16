@@ -11,12 +11,17 @@ os.environ["APP_ENV"] = "test"
 
 from app.db.models.base import Base
 
-# Single shared in-memory connection so every session sees the same DB
-engine = create_engine(
-    "sqlite://",
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
+# Set TEST_DATABASE_URL (e.g. a Postgres URL) to run the suite on a real DB;
+# default is a single shared in-memory SQLite connection.
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
+if TEST_DATABASE_URL:
+    engine = create_engine(TEST_DATABASE_URL, pool_pre_ping=True)
+else:
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
