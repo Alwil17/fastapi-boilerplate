@@ -9,8 +9,11 @@ import app.api.routes.auth_routes as auth_endpoints
 import app.api.routes.health_routes as health_endpoints
 import app.api.routes.user_routes as user_endpoints
 from app.core.config import settings
+from app.core.logging_config import configure_logging
 from app.core.security_headers import SecurityHeadersMiddleware
 from app.db.base import engine
+
+configure_logging()
 
 
 @asynccontextmanager

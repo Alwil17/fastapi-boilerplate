@@ -1,6 +1,6 @@
 import os
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -80,8 +80,19 @@ class Settings(BaseSettings):
     RATE_LIMIT_REGISTER: str = "5/minute"
     RATE_LIMIT_REFRESH: str = "30/minute"
 
+    # Logging (json for production/log aggregators, console for local development)
+    LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    LOG_FORMAT: Literal["json", "console"] = "json"
+
     # Prometheus
     PROMETHEUS_ENABLED: bool = False
+
+    @field_validator("LOG_LEVEL", "LOG_FORMAT", mode="before")
+    @classmethod
+    def _normalize_log_option(cls, value, info):
+        if not isinstance(value, str):
+            return value
+        return value.upper() if info.field_name == "LOG_LEVEL" else value.lower()
 
     @field_validator("CORS_ORIGINS", "ALLOWED_HOSTS", mode="before")
     @classmethod
