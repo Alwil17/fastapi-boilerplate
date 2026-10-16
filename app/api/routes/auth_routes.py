@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
+from app.core.rate_limit import rate_limit
 from app.core.security import create_access_token, get_current_user
 from app.db.base import get_db
 from app.schemas.auth_dto import RefreshTokenRequest, TokenResponse
@@ -13,7 +15,10 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post(
-    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+    "/register",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit(settings.RATE_LIMIT_REGISTER, "register"))],
 )
 def register(user_data: UserCreateDTO, db: Session = Depends(get_db)):
     """Register a new user."""
@@ -27,7 +32,11 @@ def register(user_data: UserCreateDTO, db: Session = Depends(get_db)):
         ) from e
 
 
-@router.post("/token", response_model=TokenResponse)
+@router.post(
+    "/token",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit(settings.RATE_LIMIT_LOGIN, "login"))],
+)
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
 ):
@@ -55,7 +64,11 @@ def get_current_user_info(current_user: UserResponse = Depends(get_current_user)
     return current_user
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit(settings.RATE_LIMIT_REFRESH, "refresh"))],
+)
 def refresh_access_token(request: RefreshTokenRequest, db: Session = Depends(get_db)):
     """Exchange a refresh token for a new access/refresh pair (single-use rotation)."""
     try:

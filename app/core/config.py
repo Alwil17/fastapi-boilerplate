@@ -72,6 +72,13 @@ class Settings(BaseSettings):
     JWT_ISSUER: str = "fastapi-boilerplate"
     JWT_AUDIENCE: str = "fastapi-boilerplate-api"
 
+    # Rate limiting (per client IP). Use a redis:// URI when running several workers.
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_STORAGE_URI: str = "memory://"
+    RATE_LIMIT_LOGIN: str = "10/minute"
+    RATE_LIMIT_REGISTER: str = "5/minute"
+    RATE_LIMIT_REFRESH: str = "30/minute"
+
     # Prometheus
     PROMETHEUS_ENABLED: bool = False
 
