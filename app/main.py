@@ -9,6 +9,7 @@ import app.api.routes.auth_routes as auth_endpoints
 import app.api.routes.health_routes as health_endpoints
 import app.api.routes.user_routes as user_endpoints
 from app.core.config import settings
+from app.core.security_headers import SecurityHeadersMiddleware
 from app.db.base import engine
 
 
@@ -50,6 +51,8 @@ app.add_middleware(
 
 if settings.ALLOWED_HOSTS != ["*"]:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.ALLOWED_HOSTS)
+
+app.add_middleware(SecurityHeadersMiddleware, strict=settings.is_production)
 
 if __name__ == "__main__":
     uvicorn.run(
