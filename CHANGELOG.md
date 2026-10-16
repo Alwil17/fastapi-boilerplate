@@ -9,6 +9,9 @@ All notable changes to this project will be documented in this file.
 - Version lives in `app/__version__` (no more `APP_VERSION` setting).
 - Python 3.13 is the supported version everywhere (image, CI, lint targets, `requires-python`).
 - `safety` replaced by `pip-audit`.
+- The root endpoint no longer links to `/docs` when the docs are disabled (production).
+- ORM models use typed `Mapped[]` columns; `mypy app/` is clean and runs in CI.
+- CI: coverage gate at 95%, tests on Python 3.13 and 3.14, least-privilege token permissions, superseded PR runs cancelled, Codecov upload failures fail the build.
 
 ### Added
 - Production container: multi-stage non-root image on gunicorn + uvicorn workers, `HEALTHCHECK`, entrypoint that applies migrations (`RUN_MIGRATIONS`), `.dockerignore`, `docker/smoke-test.sh`.
@@ -20,6 +23,13 @@ All notable changes to this project will be documented in this file.
 - `X-Request-ID` header, generated or propagated.
 - Optional Prometheus metrics (`PROMETHEUS_ENABLED`, `METRICS_TOKEN`).
 - Optional Sentry reporting (`SENTRY_DSN`, `SENTRY_TRACES_SAMPLE_RATE`).
+- Trivy scan of the built image in CI, Dependabot (pip, Actions, Docker), CodeQL already weekly.
+- `SECURITY.md`, `docs/RUNBOOK.md`, `CODEOWNERS`, issue and pull request templates.
+- k6 load test (`make loadtest`, `loadtest/api.js`).
+- Tests for the user service, the admin/purge jobs, engine construction and the health endpoints with the database down.
+
+### Fixed
+- A JSON list in `CORS_ORIGINS` / `ALLOWED_HOSTS` was rejected at startup.
 
 ## [1.0.0] - 2026-01-22
 
