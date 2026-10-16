@@ -1,4 +1,4 @@
-.PHONY: help install lock dev test lint format clean docker-up docker-down migrate
+.PHONY: help install lock dev test lint format clean docker-build docker-up docker-prod docker-down migrate
 
 help:  ## Show this help message
 	@echo "Available commands:"
@@ -30,11 +30,17 @@ clean:  ## Clean cache files
 	find . -type f -name "*.pyc" -delete
 	rm -rf .pytest_cache .coverage htmlcov
 
-docker-up:  ## Start Docker containers
-	docker-compose up -d
+docker-build:  ## Build the production image
+	docker build -t fastapi-boilerplate:latest .
 
-docker-down:  ## Stop Docker containers
-	docker-compose down
+docker-up:  ## Start the development stack (compose + override: reload, DB on localhost)
+	docker compose up -d --build
+
+docker-prod:  ## Start the production-shaped stack (no override)
+	docker compose -f docker-compose.yml up -d --build
+
+docker-down:  ## Stop Docker containers (keeps the database volume)
+	docker compose down
 
 migrate:  ## Run database migrations
 	alembic upgrade head
