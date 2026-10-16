@@ -45,6 +45,14 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(payload, default=str)
 
 
+def build_formatter() -> logging.Formatter:
+    if settings.LOG_FORMAT == "json":
+        return JsonFormatter()
+    return logging.Formatter(
+        "%(asctime)s %(levelname)-8s [%(request_id)s] %(name)s: %(message)s"
+    )
+
+
 def configure_logging() -> None:
     """Send all logs (app and uvicorn) to stdout, as JSON or human-readable text.
 
@@ -57,14 +65,7 @@ def configure_logging() -> None:
     handler = logging.StreamHandler(sys.stdout)
     setattr(handler, _HANDLER_MARK, True)
     handler.addFilter(RequestIdFilter())
-    if settings.LOG_FORMAT == "json":
-        handler.setFormatter(JsonFormatter())
-    else:
-        handler.setFormatter(
-            logging.Formatter(
-                "%(asctime)s %(levelname)-8s [%(request_id)s] %(name)s: %(message)s"
-            )
-        )
+    handler.setFormatter(build_formatter())
     root.addHandler(handler)
     root.setLevel(settings.LOG_LEVEL)
 
