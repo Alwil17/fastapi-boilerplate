@@ -14,9 +14,11 @@ from app.core.logging_config import configure_logging
 from app.core.metrics import install_metrics
 from app.core.request_context import RequestContextMiddleware
 from app.core.security_headers import SecurityHeadersMiddleware
+from app.core.sentry import init_sentry
 from app.db.base import engine
 
 configure_logging()
+init_sentry()
 
 
 @asynccontextmanager

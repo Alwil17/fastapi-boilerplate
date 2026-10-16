@@ -2,7 +2,7 @@ import os
 from functools import lru_cache
 from typing import Annotated, Literal
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy import URL, make_url
 
@@ -83,6 +83,10 @@ class Settings(BaseSettings):
     # Logging (json for production/log aggregators, console for local development)
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     LOG_FORMAT: Literal["json", "console"] = "json"
+
+    # Sentry (error reporting is off unless a DSN is set)
+    SENTRY_DSN: str | None = None
+    SENTRY_TRACES_SAMPLE_RATE: float = Field(default=0.0, ge=0.0, le=1.0)
 
     # Prometheus
     PROMETHEUS_ENABLED: bool = False

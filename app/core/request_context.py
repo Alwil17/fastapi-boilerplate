@@ -8,6 +8,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.errors import internal_error_response
 from app.core.logging_config import request_id_var
+from app.core.sentry import ACCESS_LOGGER, capture_exception
 
 REQUEST_ID_HEADER = "X-Request-ID"
 # Only accept ids that are safe to echo into headers and logs.
@@ -16,7 +17,8 @@ _VALID_REQUEST_ID = re.compile(r"[A-Za-z0-9._-]{1,64}")
 QUIET_PATHS = {"/health/live", "/health/ready", "/metrics"}
 MAX_LOGGED_PATH = 200
 
-logger = logging.getLogger("app.access")
+logger = logging.getLogger(ACCESS_LOGGER)
+error_logger = logging.getLogger("app.request")
 
 
 class RequestContextMiddleware:
@@ -61,8 +63,11 @@ class RequestContextMiddleware:
         try:
             try:
                 await self.app(scope, receive, send_with_request_id)
-            except Exception:
-                logger.exception("Unhandled exception", extra=_request_fields(scope))
+            except Exception as exc:
+                capture_exception(exc)
+                error_logger.exception(
+                    "Unhandled exception", extra=_request_fields(scope)
+                )
                 if response_started:
                     raise
                 await internal_error_response()(scope, receive, send_with_request_id)
