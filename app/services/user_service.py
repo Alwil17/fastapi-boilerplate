@@ -32,8 +32,8 @@ class UserService:
     def get_user_by_id(self, user_id: int) -> User | None:
         return self.repository.get_by_id(user_id)
 
-    def list_users(self) -> list[User]:
-        return self.repository.list()
+    def list_users(self, skip: int = 0, limit: int = 100) -> list[User]:
+        return self.repository.list(skip=skip, limit=limit)
 
     def update_user(self, user_id: int, user_data: UserUpdateDTO) -> User | None:
         return self.repository.update(user_id, user_data)

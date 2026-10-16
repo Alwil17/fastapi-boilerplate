@@ -26,8 +26,8 @@ class UserRepository:
     def get_by_email(self, email: str) -> User | None:
         return self.db.query(User).filter(User.email == email).first()
 
-    def list(self) -> list[User]:
-        return self.db.query(User).all()
+    def list(self, skip: int = 0, limit: int = 100) -> list[User]:
+        return self.db.query(User).order_by(User.id).offset(skip).limit(limit).all()
 
     def update(self, user_id: int, user_data: UserUpdateDTO) -> User | None:
         user = self.get_by_id(user_id)
