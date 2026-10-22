@@ -6,6 +6,12 @@ from app.core.config import Settings
 GOOD_SECRET = "x" * 48
 
 
+@pytest.fixture(autouse=True)
+def _no_ambient_database_url(monkeypatch):
+    # CI exports DATABASE_URL for the suite; Settings would read it and bypass the DB_* fields under test.
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+
 def make(**overrides):
     base = {
         "APP_ENV": "production",
