@@ -11,7 +11,7 @@ pydantic[email]
 PyJWT>=2.8
 bcrypt
 python-multipart
-pydantic-settings>=2.7
+pydantic-settings>=2.16.1
 limits>=3.13
 prometheus-client>=0.20
-sentry-sdk>=2.72
+sentry-sdk>=2.73.0
