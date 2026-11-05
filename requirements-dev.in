@@ -3,16 +3,16 @@
 -c requirements.txt
 
 # Testing
-pytest>=8.0.0
+pytest>=9.2.0
 pytest-cov>=4.1.0
-pytest-env>=1.1.0
+pytest-env>=1.8.4
 httpx>=0.26.0
 
 # Code quality
-ruff>=0.1.0
+ruff>=0.17.3
 black>=24.0.0
 isort>=5.13.0
-mypy>=1.8.0
+mypy>=2.4.1
 
 # Security
 bandit[toml]>=1.7.5
